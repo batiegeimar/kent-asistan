@@ -4,11 +4,11 @@ from supabase import create_client, Client
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
 
-# Supabase Bağlantısı
+# Supabase Bağlantısı (Gizli boşlukları önlemek için .strip() eklendi)
 @st.cache_resource
 def init_connection():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = st.secrets["SUPABASE_URL"].strip()
+    key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 try:
@@ -26,9 +26,9 @@ tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Personel / Yönetim
 with tab1:
     st.header("Yeni Talep Oluştur")
     
-    # Veritabanından kategorileri çekme denemesi
+    # Veritabanından kategorileri çekme
     ana_kategoriler = []
-    alt_kategori_data = None
+    tum_veriler = []
     
     try:
         kategori_data = supabase.table("kategori_kurum_eslestirme").select("ana_kategori, alt_kategori, sorumlu_kurum, alt_bolum").execute()
@@ -36,9 +36,9 @@ with tab1:
             tum_veriler = kategori_data.data
             ana_kategoriler = list(set([item["ana_kategori"] for item in tum_veriler]))
     except Exception as e:
-        tum_veriler = []
+        pass
 
-    # Eğer veritabanından çekilemezse sistem çökmesin diye yedek liste
+    # Yedek Liste (Bağlantı gelene kadar sistemi korur)
     if not ana_kategoriler:
         tum_veriler = [
             {"ana_kategori": "Yol ve Ulaşım", "alt_kategori": "Yol Bozukluğu / Çukur", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
@@ -59,13 +59,10 @@ with tab1:
         filtrelenmis_altlar = [item for item in tum_veriler if item["ana_kategori"] == secilen_ana_kategori]
         alt_kategori_isimleri = [item["alt_kategori"] for item in filtrelenmis_altlar]
         
-        secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri)
+        secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri if alt_kategori_isimleri else ["Alt Kategori Bulunamadı"])
         
-        # --- YENİ EKLENEN ALANLAR: Konum ve Fotoğraf ---
         konum_tarif = st.text_input("Konum / Mahalle, Sokak veya Adres Tarifi *", placeholder="Örn: Cumhuriyet Mah. Atatürk Cad. No:12 önü")
-        
         fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
-        
         aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...")
         
         gonder_btn = st.form_submit_button("Talebi Gönder")
@@ -80,8 +77,6 @@ with tab1:
                 
                 import random
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
-                
-                # Fotoğraf adı simülasyonu (İleride Supabase Storage'a bağlanabilir)
                 foto_adi = fotograf.name if fotograf else "Fotoğraf Yok"
                 
                 kayit = {
