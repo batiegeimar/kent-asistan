@@ -1,44 +1,46 @@
 import streamlit as st
 from supabase import create_client, Client
 
-# Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
-
-# Supabase Bağlantısı (Gizli boşlukları önlemek için .strip() eklendi)
-@st.cache_resource
-def init_connection():
-    url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY"].strip()
-    return create_client(url, key)
-
-try:
-    supabase = init_connection()
-    baglanti_basarili = True
-except Exception as e:
-    baglanti_basarili = False
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Belediyemiz sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan kolayca iletebilirsiniz.")
 
-# Sekmeler (Vatandaş Formu ve Personel Paneli)
+# Bağlantı ve Debug Testi
+baglanti_basarili = False
+supabase = None
+
+try:
+    url = st.secrets["SUPABASE_URL"].strip()
+    key = st.secrets["SUPABASE_KEY"].strip()
+    
+    # Ekranda ne okuduğunu görelim (Güvenlik için key'i gizliyoruz)
+    st.success(f"✅ Okunan Supabase URL: `{url}`")
+    
+    supabase = create_client(url, key)
+    baglanti_basarili = True
+except Exception as e:
+    st.error(f"⚠️ Secrets / Bağlantı Hatası: {e}")
+
+# Sekmeler
 tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Personel / Yönetim Paneli"])
 
 with tab1:
     st.header("Yeni Talep Oluştur")
     
-    # Veritabanından kategorileri çekme
     ana_kategoriler = []
     tum_veriler = []
     
-    try:
-        kategori_data = supabase.table("kategori_kurum_eslestirme").select("ana_kategori, alt_kategori, sorumlu_kurum, alt_bolum").execute()
-        if kategori_data.data:
-            tum_veriler = kategori_data.data
-            ana_kategoriler = list(set([item["ana_kategori"] for item in tum_veriler]))
-    except Exception as e:
-        pass
+    if baglanti_basarili and supabase:
+        try:
+            kategori_data = supabase.table("kategori_kurum_eslestirme").select("ana_kategori, alt_kategori, sorumlu_kurum, alt_bolum").execute()
+            if kategori_data.data:
+                tum_veriler = kategori_data.data
+                ana_kategoriler = list(set([item["ana_kategori"] for item in tum_veriler]))
+        except Exception as db_err:
+            st.warning(f"Kategoriler tablodan çekilemedi: {db_err}")
 
-    # Yedek Liste (Bağlantı gelene kadar sistemi korur)
+    # Yedek Liste (Bağlantı kurulana kadar formun çalışmasını sağlar)
     if not ana_kategoriler:
         tum_veriler = [
             {"ana_kategori": "Yol ve Ulaşım", "alt_kategori": "Yol Bozukluğu / Çukur", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
@@ -55,7 +57,6 @@ with tab1:
         
         secilen_ana_kategori = st.selectbox("Ana Kategori", options=sorted(ana_kategoriler))
         
-        # Seçilen ana kategoriye ait alt kategorileri filtreleme
         filtrelenmis_altlar = [item for item in tum_veriler if item["ana_kategori"] == secilen_ana_kategori]
         alt_kategori_isimleri = [item["alt_kategori"] for item in filtrelenmis_altlar]
         
@@ -94,26 +95,32 @@ with tab1:
                     "durum": "Yeni"
                 }
                 
-                try:
-                    response = supabase.table("talepler").insert(kayit).execute()
-                    st.success(f"Talebiniz başarıyla alındı! Takip Numaranız: **{talep_id}**")
-                    st.balloons()
-                except Exception as db_err:
-                    st.error(f"Kayıt eklenirken bir hata oluştu: {db_err}")
+                if baglanti_basarili and supabase:
+                    try:
+                        response = supabase.table("talepler").insert(kayit).execute()
+                        st.success(f"Talebiniz başarıyla alındı! Takip Numaranız: **{talep_id}**")
+                        st.balloons()
+                    except Exception as db_err:
+                        st.error(f"Kayıt eklenirken veritabanı hatası oluştu: {db_err}")
+                else:
+                    st.error("Veritabanı bağlantısı kurulamadığı için kayıt yapılamadı. Lütfen üstteki Secrets ayarlarını kontrol edin.")
 
 with tab2:
     st.header("Belediye Personel Girişi")
     eposta = st.text_input("Personel E-Posta Adresi")
     
     if st.button("Giriş Yap"):
-        try:
-            personel_kontrol = supabase.table("kullanicilar_kurum").select("*").eq("eposta_adresi", eposta).execute()
-            if personel_kontrol.data:
-                st.success(f"Hoş geldiniz, {personel_kontrol.data[0]['ad_soyad']} ({personel_kontrol.data[0]['unvan']})")
-                st.subheader("Gelen Talepler Listesi")
-                talepler = supabase.table("talepler").select("*").execute()
-                st.dataframe(talepler.data)
-            else:
-                st.error("Bu e-posta adresiyle kayıtlı yetkili personel bulunamadı!")
-        except Exception as e:
-            st.error(f"Personel sorgulanırken hata oluştu: {e}")
+        if baglanti_basarili and supabase:
+            try:
+                personel_kontrol = supabase.table("kullanicilar_kurum").select("*").eq("eposta_adresi", eposta).execute()
+                if personel_kontrol.data:
+                    st.success(f"Hoş geldiniz, {personel_kontrol.data[0]['ad_soyad']} ({personel_kontrol.data[0]['unvan']})")
+                    st.subheader("Gelen Talepler Listesi")
+                    talepler = supabase.table("talepler").select("*").execute()
+                    st.dataframe(talepler.data)
+                else:
+                    st.error("Bu e-posta adresiyle kayıtlı yetkili personel bulunamadı!")
+            except Exception as e:
+                st.error(f"Personel sorgulanırken hata oluştu: {e}")
+        else:
+            st.error("Veritabanı bağlantısı yok.")
