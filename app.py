@@ -1,8 +1,8 @@
 import streamlit as st
 from supabase import create_client, Client
 
-# Sayfa Yapılandırması
-st.set_page_title_page_config(page_title="KentAsistan - Vatandaş Bildirim Sistemi", layout="centered")
+# Sayfa Yapılandırması (Düzeltildi)
+st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim Sistemi", layout="centered")
 
 # Supabase Bağlantısı (Streamlit Secrets üzerinden güvenli bağlantı)
 @st.cache_resource
