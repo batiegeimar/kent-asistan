@@ -6,7 +6,7 @@ import io
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
 
-# Bellek Tabanlı Veri Deposu (Fotoğraf verisini de tutacak şekilde güncellendi)
+# Bellek Tabanlı Veri Deposu
 if "talepler" not in st.session_state:
     st.session_state.talepler = [
         {
@@ -14,7 +14,7 @@ if "talepler" not in st.session_state:
             "tc_kimlik_no": "11111111111",
             "ad_soyad": "Örnek Vatandaş",
             "telefon_no": "05321112233",
-            "ana_kategori": "Yol ve Ulaşım",
+            "ana_kategori": "Yol و Ulaşım",
             "alt_kategori": "Yol Bozukluğu / Çukur",
             "alt_bolum": "Fen İşleri Müdürlüğü",
             "gps_konum": "Cumhuriyet Mah. Atatürk Cad. No:5",
@@ -76,7 +76,6 @@ with tab1:
                 
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
                 
-                # Fotoğraf verisini byte olarak yakalayalım
                 foto_bytes = None
                 foto_adi = "Fotoğraf Yok"
                 if fotograf is not None:
@@ -119,22 +118,20 @@ with tab2:
             st.success(f"Hoş geldiniz, {ad} ({unvan})")
             st.subheader("📋 Gelen Talepler ve Detay İnceleme")
             
-            # Her bir talebi detaylı kartlar halinde gösterelim ki fotoğraf net açılsın
             for talep in st.session_state.talepler:
                 with st.expander(f"📌 {talep['talep_id']} - {talep['ana_kategori']} / {talep['alt_kategori']} ({talep['durum']})"):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write(**"Vatandaş:"** f" {talep['ad_soyad']}")
-                        st.write(**"Telefon:"** f" {talep['telefon_no']}")
-                        st.write(**"Konum:"** f" {talep['gps_konum']}")
-                        st.write(**"Birim:"** f" {talep['alt_bolum']}")
+                        st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
+                        st.markdown(f"**Telefon:** {talep['telefon_no']}")
+                        st.markdown(f"**Konum:** {talep['gps_konum']}")
+                        st.markdown(f"**Birim:** {talep['alt_bolum']}")
                     with col2:
-                        st.write(**"Açıklama:"** f" {talep['aciklama']}")
+                        st.markdown(f"**Açıklama:** {talep['aciklama']}")
                     
-                    # Eğer fotoğraf yüklendiyse doğrudan ekranda göster
                     if talep["fotograf_bytes"] is not None:
                         st.markdown("---")
-                        st.write("📷 **Yüklenen Hasar Fotoğrafı:**")
+                        st.markdown("📷 **Yüklenen Hasar Fotoğrafı:**")
                         image = Image.open(io.BytesIO(talep["fotograf_bytes"]))
                         st.image(image, caption=talep["fotograf_adi"], use_column_width=True)
                     else:
