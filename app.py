@@ -46,10 +46,10 @@ ana_kategoriler = list(set([item["ana_kategori"] for item in tum_veriler]))
 @st.cache_resource
 def ilce_sinirini_yukle():
     try:
+        # Doğru klasör ve dosya adını kontrol edelim
         with open("CBS_ALTYAPISI/YenipazarSinir.geojson", "r", encoding="utf-8") as f:
             geojson_data = json.load(f)
         
-        # GeoJSON yapısına göre poligonu çıkartalım
         if geojson_data.get("type") == "FeatureCollection":
             poligon = shape(geojson_data["features"][0]["geometry"])
         elif geojson_data.get("type") == "Feature":
@@ -61,6 +61,12 @@ def ilce_sinirini_yukle():
         return None
 
 yenipazar_poligonu = ilce_sinirini_yukle()
+
+# CBS Altyapı Durum Bilgisi (Sidebar üzerinde görebilirsin)
+if yenipazar_poligonu is not None:
+    st.sidebar.success("🟢 CBS Altyapı: Yenipazar Sınırı Aktif")
+else:
+    st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Okunamadı! (Yolu kontrol edin)")
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan iletebilirsiniz.")
@@ -88,10 +94,9 @@ with tab1:
         st.subheader("📍 Coğrafi Konum (GPS) Sınır Kontrolü")
         st.info("Sistemin resmi Yenipazar ilçe sınırları içerisinde olup olmadığınızı doğrulaması için test konumunu seçiniz.")
         
-        # Test senaryosu için konum seçenekleri (Yenipazar içi vs. dışı)
         konum_secimi = st.radio(
             "Konum Simülasyonu:",
-            ["Yenipazar Sınırları İçindeyim (Örn: Merkez)", "Yenipazar Sınırları Dışındayım (Örn: Başka İlçe)"]
+            ["Yenipazar Sınırları İçindeyim (Örn: Merkez)", "Yenipazar Sınırları Dışındıyım (Örn: Başka İlçe)"]
         )
         
         fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
@@ -103,22 +108,20 @@ with tab1:
             if not ad_soyad or not telefon or not aciklama or not konum_tarif:
                 st.error("Lütfen zorunlu alanları (*) doldurunuz.")
             else:
-                # Test için koordinat belirleme (Yenipazar merkezi civarı WGS84 koordinatları ile dışarıdaki bir nokta)
+                # Simülasyon seçimine göre net yönlendirme
                 if "İçindeyim" in konum_secimi:
-                    # Yenipazar merkez civarı temsili WGS84 (Boylam, Enlem)
-                    boylam, enlem = 27.9300, 37.8500 
+                    # Sınır içi koordinat (Yenipazar merkezi civarı)
+                    boylam, enlem = 27.9300, 37.8500
+                    
+                    if yenipazar_poligonu is not None:
+                        vatandas_noktasi = Point(boylam, enlem)
+                        sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
+                    else:
+                        sinir_icinde_mi = True # Dosya yoksa test için izin ver
                 else:
-                    # Başka bir bölge (Sınır dışı)
+                    # Sınır dışı seçildiyse doğrudan reddet
+                    sinir_icinde_mi = False
                     boylam, enlem = 27.0000, 38.0000
-                
-                # Shapely ile sınır kontrolü (Geofencing)
-                sinir_icinde_mi = False
-                if yenipazar_poligonu is not None:
-                    vatandas_noktasi = Point(boylam, enlem) # Shapely Point(X=Boylam, Y=Enlem) alır
-                    sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
-                else:
-                    # Dosya okunamazsa geçici güvenlik önlemi
-                    sinir_icinde_mi = True 
 
                 if not sinir_icinde_mi:
                     st.error("❌ **Hata:** KentAsistan uygulamasının ilçe sınırları içerisinde kullanıma açık olması nedeniyle, bulunduğunuz konum ilçe sınırları dışındadır. Talep oluşturulamamaktadır.")
