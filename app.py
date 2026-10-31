@@ -16,7 +16,7 @@ if "talepler" not in st.session_state:
             "tc_kimlik_no": "11111111111",
             "ad_soyad": "Örnek Vatandaş",
             "telefon_no": "05321112233",
-            "ana_kategori": "Su Altyapısı",
+            "ana_kategori": "Su Altyapısı ile İlgili Talepler",
             "alt_kategori": "Su Borusu Patlağı",
             "alt_bolum": "Su ve Kanalizasyon Müdürlüğü",
             "gps_konum": "Yenipazar Merkez (Sınır İçi)",
@@ -114,22 +114,23 @@ st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevr
 tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Personel / Yönetim Paneli"])
 
 with tab1:
-    st.header("Yeni Talep Oluştur")
+    st.header("New Talep Oluştur")
     
-    with st.form("talep_formu"):
-        tc_kimlik = st.text_input("TC Kimlik Numarası (Opsiyonel)")
-        ad_soyad = st.text_input("Ad Soyad *")
-        telefon = st.text_input("Telefon Numarası *")
-        
-        # Dinamik Kategori Seçimi
-        secilen_ana_kategori = st.selectbox("Ana Kategori", options=ana_kategoriler)
-        
-        # Seçilen ana kategoriye ait alt kategorileri filtreleme
-        filtrelenmis_altlar = [item for item in tum_veriler if item["ana_kategori"] == secilen_ana_kategori]
-        alt_kategori_isimleri = [item["alt_kategori"] for item in filtrelenmis_altlar]
-        
-        secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri)
-        
+    # Genel Bilgiler
+    tc_kimlik = st.text_input("TC Kimlik Numarası (Opsiyonel)")
+    ad_soyad = st.text_input("Ad Soyad *")
+    telefon = st.text_input("Telefon Numarası *")
+    
+    # Dinamik Ana ve Alt Kategori Seçimi (Form Dışında ve State Kontrollü)
+    secilen_ana_kategori = st.selectbox("Ana Kategori", options=ana_kategoriler, key="ana_kat_secim")
+    
+    # Seçilen ana kategoriye göre alt kategorileri filtreleme
+    filtrelenmis_altlar = [item for item in tum_veriler if item["ana_kategori"] == secilen_ana_kategori]
+    alt_kategori_isimleri = [item["alt_kategori"] for item in filtrelenmis_altlar]
+    
+    secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri, key="alt_kat_secim")
+    
+    with st.form("talep_formu_detay"):
         konum_tarif = st.text_input("Konum / Mahalle, Sokak veya Adres Tarifi *", placeholder="Örn: Çarşı Mah. Atatürk Cad. No:12")
         
         st.markdown("---")
