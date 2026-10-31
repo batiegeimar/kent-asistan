@@ -42,31 +42,41 @@ tum_veriler = [
 ]
 ana_kategoriler = list(set([item["ana_kategori"] for item in tum_veriler]))
 
-# Resmi GeoJSON Sınır Dosyasını Yükleme (Shapely ile Geofencing)
+# Akıllı GeoJSON Sınır Dosyası Yükleme (Farklı klasör yollarını ve büyük/küçük harfleri otomatik dener)
 @st.cache_resource
 def ilce_sinirini_yukle():
-    try:
-        # Doğru klasör ve dosya adını kontrol edelim
-        with open("CBS_ALTYAPISI/YenipazarSinir.geojson", "r", encoding="utf-8") as f:
-            geojson_data = json.load(f)
-        
-        if geojson_data.get("type") == "FeatureCollection":
-            poligon = shape(geojson_data["features"][0]["geometry"])
-        elif geojson_data.get("type") == "Feature":
-            poligon = shape(geojson_data["geometry"])
-        else:
-            poligon = shape(geojson_data)
-        return poligon
-    except Exception as e:
-        return None
+    olasi_yollar = [
+        "CBS_ALTYAPISI/YenipazarSinir.geojson",
+        "cbs_altyapisi/YenipazarSinir.geojson",
+        "CBS_Altyapisi/Yenipazarsinir.geojson",
+        "YenipazarSinir.geojson",
+        "yenipazarsinir.geojson"
+    ]
+    
+    for yol in olasi_yollar:
+        try:
+            with open(yol, "r", encoding="utf-8") as f:
+                geojson_data = json.load(f)
+            
+            if geojson_data.get("type") == "FeatureCollection":
+                poligon = shape(geojson_data["features"][0]["geometry"])
+            elif geojson_data.get("type") == "Feature":
+                poligon = shape(geojson_data["geometry"])
+            else:
+                poligon = shape(geojson_data)
+            return poligon
+        except Exception:
+            continue
+            
+    return None
 
 yenipazar_poligonu = ilce_sinirini_yukle()
 
-# CBS Altyapı Durum Bilgisi (Sidebar üzerinde görebilirsin)
+# CBS Altyapı Durum Bilgisi (Sidebar)
 if yenipazar_poligonu is not None:
     st.sidebar.success("🟢 CBS Altyapı: Yenipazar Sınırı Aktif")
 else:
-    st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Okunamadı! (Yolu kontrol edin)")
+    st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Bulunamadı! (Dosyayı GitHub ana dizinine veya CBS_ALTYAPISI klasörüne attığınızdan emin olun)")
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan iletebilirsiniz.")
@@ -108,18 +118,16 @@ with tab1:
             if not ad_soyad or not telefon or not aciklama or not konum_tarif:
                 st.error("Lütfen zorunlu alanları (*) doldurunuz.")
             else:
-                # Simülasyon seçimine göre net yönlendirme
                 if "İçindeyim" in konum_secimi:
-                    # Sınır içi koordinat (Yenipazar merkezi civarı)
+                    # Yenipazar merkezi civarı temsili WGS84 koordinat (Boylam, Enlem)
                     boylam, enlem = 27.9300, 37.8500
                     
                     if yenipazar_poligonu is not None:
                         vatandas_noktasi = Point(boylam, enlem)
                         sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
                     else:
-                        sinir_icinde_mi = True # Dosya yoksa test için izin ver
+                        sinir_icinde_mi = True 
                 else:
-                    # Sınır dışı seçildiyse doğrudan reddet
                     sinir_icinde_mi = False
                     boylam, enlem = 27.0000, 38.0000
 
