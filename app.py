@@ -16,14 +16,14 @@ if "talepler" not in st.session_state:
             "tc_kimlik_no": "11111111111",
             "ad_soyad": "Örnek Vatandaş",
             "telefon_no": "05321112233",
-            "ana_kategori": "Yol ve Ulaşım",
-            "alt_kategori": "Yol Bozukluğu / Çukur",
-            "alt_bolum": "Fen İşleri Müdürlüğü",
+            "ana_kategori": "Su Altyapısı",
+            "alt_kategori": "Su Borusu Patlağı",
+            "alt_bolum": "Su ve Kanalizasyon Müdürlüğü",
             "gps_konum": "Yenipazar Merkez (Sınır İçi)",
             "fotograf_adi": "Fotoğraf Yok",
             "fotograf_bytes": None,
-            "aciklama": "Ana cadde üzerinde derin çukur oluşmuş durumda.",
-            "sorumlu_kurum": "Belediye",
+            "aciklama": "Ana cadde üzerinde su patlağı var.",
+            "sorumlu_kurum": "Su İdaresi",
             "durum": "Yeni"
         }
     ]
@@ -31,18 +31,48 @@ if "talepler" not in st.session_state:
 if "personeller" not in st.session_state:
     st.session_state.personeller = [
         {"eposta_adresi": "fenisleri@belediye.bel.tr", "ad_soyad": "Ahmet Yılmaz", "unvan": "Fen İşleri Müdürü"},
+        {"eposta_adresi": "suidaresi@belediye.bel.tr", "ad_soyad": "Canan Sucu", "unvan": "Su ve Kanalizasyon Amiri"},
         {"eposta_adresi": "parkbahce@belediye.bel.tr", "ad_soyad": "Mehmet Demir", "unvan": "Park ve Bahçeler Amiri"}
     ]
 
+# Konsept Şemaya Uygun Genişletilmiş Kategori ve Birim Matrisi
 tum_veriler = [
-    {"ana_kategori": "Yol ve Ulaşım", "alt_kategori": "Yol Bozukluğu / Çukur", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
-    {"ana_kategori": "Yol ve Ulaşım", "alt_kategori": "Kaldırım ve Bordür Hasarı", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
-    {"ana_kategori": "Park ve Yeşil Alan", "alt_kategori": "Park Aydınlatma Arızası", "sorumlu_kurum": "Belediye", "alt_bolum": "Park ve Bahçeler Müdürlüğü"},
-    {"ana_kategori": "Çevre ve Temizlik", "alt_kategori": "Çöp Konteyneri Kırık", "sorumlu_kurum": "Belediye", "alt_bolum": "Temizlik İşleri Müdürlüğü"}
-]
-ana_kategoriler = list(set([item["ana_kategori"] for item in tum_veriler]))
+    # Su Altyapısı
+    {"ana_kategori": "Su Altyapısı ile İlgili Talepler", "alt_kategori": "Su Borusu Patlağı", "sorumlu_kurum": "Su İdaresi", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
+    {"ana_kategori": "Su Altyapısı ile İlgili Talepler", "alt_kategori": "Su Kesintisi", "sorumlu_kurum": "Su İdaresi", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
+    {"ana_kategori": "Su Altyapısı ile İlgili Talepler", "alt_kategori": "Kanalizasyon Sızıntısı", "sorumlu_kurum": "Su İdaresi", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
+    {"ana_kategori": "Su Altyapısı ile İlgili Talepler", "alt_kategori": "Kanalizasyon Tıkanıklığı", "sorumlu_kurum": "Su İdaresi", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
+    {"ana_kategori": "Su Altyapısı ile İlgili Talepler", "alt_kategori": "Rögar Kapağı ile İlgili Sorunlar", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
 
-# Akıllı GeoJSON Sınır Dosyası Yükleme (Farklı klasör yollarını ve büyük/küçük harfleri otomatik dener)
+    # Yol ve Kaldırımlar
+    {"ana_kategori": "Yol ve Kaldırımlarla İlgili Talepler", "alt_kategori": "Yol Bozukluğu ile İlgili Talepler (Çukur vb.)", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
+    {"ana_kategori": "Yol ve Kaldırımlarla İlgili Talepler", "alt_kategori": "Yol Düzenleme Talebi", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
+    {"ana_kategori": "Yol ve Kaldırımlarla İlgili Talepler", "alt_kategori": "Kaldırım ve Bordür Hasarı", "sorumlu_kurum": "Belediye", "alt_bolum": "Fen İşleri Müdürlüğü"},
+
+    # Elektrik Altyapısı
+    {"ana_kategori": "Elektrik Altyapısı ile İlgili Talepler", "alt_kategori": "Elektrik Kaçağı ile İlgili Talepler", "sorumlu_kurum": "EDAŞ / Elektrik Şirketi", "alt_bolum": "Elektrik Dağıtım Birimi"},
+    {"ana_kategori": "Elektrik Altyapısı ile İlgili Talepler", "alt_kategori": "Elektrik Kablosu Tehlikesi", "sorumlu_kurum": "EDAŞ / Elektrik Şirketi", "alt_bolum": "Elektrik Dağıtım Birimi"},
+
+    # Doğalgaz Altyapısı
+    {"ana_kategori": "Doğalgaz Altyapısı ile İlgili Talepler", "alt_kategori": "Doğalgaz Kaçağı ile İlgili Talepler", "sorumlu_kurum": "Doğalgaz Dağıtım Şirketi", "alt_bolum": "Doğalgaz Acil Servis"},
+
+    # Çevre Kirliliği
+    {"ana_kategori": "Çevre Kirliliği ile İlgili Talepler", "alt_kategori": "Hafriyat / Kaçak Atık Dökümü", "sorumlu_kurum": "Belediye", "alt_bolum": "Zabıta / Çevre Koruma"},
+    {"ana_kategori": "Çevre Kirliliği ile İlgili Talepler", "alt_kategori": "Gürültü ve Çevre Rahatsızlığı", "sorumlu_kurum": "Belediye", "alt_bolum": "Zabıta Müdürlüğü"},
+
+    # Temizlik İşleri
+    {"ana_kategori": "Temizlik İşleri ile İlgili Talepler", "alt_kategori": "Çöp Konteyneri Kırık / Eksik", "sorumlu_kurum": "Belediye", "alt_bolum": "Temizlik İşleri Müdürlüğü"},
+    {"ana_kategori": "Temizlik İşleri ile İlgili Talepler", "alt_kategori": "Sokak Süpürme ve Çöp Toplama Aksaması", "sorumlu_kurum": "Belediye", "alt_bolum": "Temizlik İşleri Müdürlüğü"},
+
+    # Park ve Bahçeler
+    {"ana_kategori": "Park ve Bahçeler ile İlgili Talepler", "alt_kategori": "Park Aydınlatma Arızası", "sorumlu_kurum": "Belediye", "alt_bolum": "Park ve Bahçeler Müdürlüğü"},
+    {"ana_kategori": "Park ve Bahçeler ile İlgili Talepler", "alt_kategori": "Ağaç Budama / Tehlikeli Dal Talebi", "sorumlu_kurum": "Belediye", "alt_bolum": "Park ve Bahçeler Müdürlüğü"},
+    {"ana_kategori": "Park ve Bahçeler ile İlgili Talepler", "alt_kategori": "Oyun Parkı / Donatı Hasarı", "sorumlu_kurum": "Belediye", "alt_bolum": "Park ve Bahçeler Müdürlüğü"}
+]
+
+ana_kategoriler = sorted(list(set([item["ana_kategori"] for item in tum_veriler])))
+
+# Akıllı GeoJSON Sınır Dosyası Yükleme
 @st.cache_resource
 def ilce_sinirini_yukle():
     olasi_yollar = [
@@ -72,11 +102,11 @@ def ilce_sinirini_yukle():
 
 yenipazar_poligonu = ilce_sinirini_yukle()
 
-# CBS Altyapı Durum Bilgisi (Sidebar)
+# Sidebar CBS Durumu
 if yenipazar_poligonu is not None:
     st.sidebar.success("🟢 CBS Altyapı: Yenipazar Sınırı Aktif")
 else:
-    st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Bulunamadı! (Dosyayı GitHub ana dizinine veya CBS_ALTYAPISI klasörüne attığınızdan emin olun)")
+    st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Bulunamadı!")
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan iletebilirsiniz.")
@@ -91,8 +121,10 @@ with tab1:
         ad_soyad = st.text_input("Ad Soyad *")
         telefon = st.text_input("Telefon Numarası *")
         
-        secilen_ana_kategori = st.selectbox("Ana Kategori", options=sorted(ana_kategoriler))
+        # Dinamik Kategori Seçimi
+        secilen_ana_kategori = st.selectbox("Ana Kategori", options=ana_kategoriler)
         
+        # Seçilen ana kategoriye ait alt kategorileri filtreleme
         filtrelenmis_altlar = [item for item in tum_veriler if item["ana_kategori"] == secilen_ana_kategori]
         alt_kategori_isimleri = [item["alt_kategori"] for item in filtrelenmis_altlar]
         
@@ -119,9 +151,7 @@ with tab1:
                 st.error("Lütfen zorunlu alanları (*) doldurunuz.")
             else:
                 if "İçindeyim" in konum_secimi:
-                    # Yenipazar merkezi civarı temsili WGS84 koordinat (Boylam, Enlem)
                     boylam, enlem = 27.9300, 37.8500
-                    
                     if yenipazar_poligonu is not None:
                         vatandas_noktasi = Point(boylam, enlem)
                         sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
@@ -168,7 +198,7 @@ with tab1:
 
 with tab2:
     st.header("Belediye Personel Girişi")
-    st.info("💡 Test için şu e-postayı yazabilirsiniz: `fenisleri@belediye.bel.tr`")
+    st.info("💡 Test için şu e-postayı yazabilirsiniz: `fenisleri@belediye.bel.tr` veya `suidaresi@belediye.bel.tr`")
     
     eposta = st.text_input("Personel E-Posta Adresi")
     
@@ -189,7 +219,7 @@ with tab2:
                         st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
                         st.markdown(f"**Telefon:** {talep['telefon_no']}")
                         st.markdown(f"**Konum:** {talep['gps_konum']}")
-                        st.markdown(f"**Birim:** {talep['alt_bolum']}")
+                        st.markdown(f"**Sorumlu Kurum / Birim:** {talep['sorumlu_kurum']} / {talep['alt_bolum']}")
                     with col2:
                         st.markdown(f"**Açıklama:** {talep['aciklama']}")
                     
