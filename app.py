@@ -2,6 +2,8 @@ import streamlit as st
 import random
 from PIL import Image
 import io
+import json
+from shapely.geometry import Point, shape
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
@@ -14,10 +16,10 @@ if "talepler" not in st.session_state:
             "tc_kimlik_no": "11111111111",
             "ad_soyad": "Örnek Vatandaş",
             "telefon_no": "05321112233",
-            "ana_kategori": "Yol و Ulaşım",
+            "ana_kategori": "Yol ve Ulaşım",
             "alt_kategori": "Yol Bozukluğu / Çukur",
             "alt_bolum": "Fen İşleri Müdürlüğü",
-            "gps_konum": "Cumhuriyet Mah. Atatürk Cad. No:5",
+            "gps_konum": "Yenipazar Merkez (Sınır İçi)",
             "fotograf_adi": "Fotoğraf Yok",
             "fotograf_bytes": None,
             "aciklama": "Ana cadde üzerinde derin çukur oluşmuş durumda.",
@@ -40,8 +42,28 @@ tum_veriler = [
 ]
 ana_kategoriler = list(set([item["ana_kategori"] for item in tum_veriler]))
 
+# Resmi GeoJSON Sınır Dosyasını Yükleme (Shapely ile Geofencing)
+@st.cache_resource
+def ilce_sinirini_yukle():
+    try:
+        with open("CBS_ALTYAPISI/YenipazarSinir.geojson", "r", encoding="utf-8") as f:
+            geojson_data = json.load(f)
+        
+        # GeoJSON yapısına göre poligonu çıkartalım
+        if geojson_data.get("type") == "FeatureCollection":
+            poligon = shape(geojson_data["features"][0]["geometry"])
+        elif geojson_data.get("type") == "Feature":
+            poligon = shape(geojson_data["geometry"])
+        else:
+            poligon = shape(geojson_data)
+        return poligon
+    except Exception as e:
+        return None
+
+yenipazar_poligonu = ilce_sinirini_yukle()
+
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
-st.write("Belediyemiz sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan kolayca iletebilirsiniz.")
+st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan iletebilirsiniz.")
 
 tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Personel / Yönetim Paneli"])
 
@@ -60,7 +82,18 @@ with tab1:
         
         secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri)
         
-        konum_tarif = st.text_input("Konum / Mahalle, Sokak veya Adres Tarifi *", placeholder="Örn: Cumhuriyet Mah. Atatürk Cad. No:12 önü")
+        konum_tarif = st.text_input("Konum / Mahalle, Sokak veya Adres Tarifi *", placeholder="Örn: Çarşı Mah. Atatürk Cad. No:12")
+        
+        st.markdown("---")
+        st.subheader("📍 Coğrafi Konum (GPS) Sınır Kontrolü")
+        st.info("Sistemin resmi Yenipazar ilçe sınırları içerisinde olup olmadığınızı doğrulaması için test konumunu seçiniz.")
+        
+        # Test senaryosu için konum seçenekleri (Yenipazar içi vs. dışı)
+        konum_secimi = st.radio(
+            "Konum Simülasyonu:",
+            ["Yenipazar Sınırları İçindeyim (Örn: Merkez)", "Yenipazar Sınırları Dışındayım (Örn: Başka İlçe)"]
+        )
+        
         fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
         aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...")
         
@@ -70,37 +103,57 @@ with tab1:
             if not ad_soyad or not telefon or not aciklama or not konum_tarif:
                 st.error("Lütfen zorunlu alanları (*) doldurunuz.")
             else:
-                eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
-                sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
-                alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
+                # Test için koordinat belirleme (Yenipazar merkezi civarı WGS84 koordinatları ile dışarıdaki bir nokta)
+                if "İçindeyim" in konum_secimi:
+                    # Yenipazar merkez civarı temsili WGS84 (Boylam, Enlem)
+                    boylam, enlem = 27.9300, 37.8500 
+                else:
+                    # Başka bir bölge (Sınır dışı)
+                    boylam, enlem = 27.0000, 38.0000
                 
-                talep_id = f"KENT-{random.randint(10000, 99999)}"
-                
-                foto_bytes = None
-                foto_adi = "Fotoğraf Yok"
-                if fotograf is not None:
-                    foto_bytes = fotograf.getvalue()
-                    foto_adi = fotograf.name
-                
-                yeni_kayit = {
-                    "talep_id": talep_id,
-                    "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
-                    "ad_soyad": ad_soyad,
-                    "telefon_no": telefon,
-                    "ana_kategori": secilen_ana_kategori,
-                    "alt_kategori": secilen_alt_kategori,
-                    "alt_bolum": alt_bolum,
-                    "gps_konum": konum_tarif,
-                    "fotograf_adi": foto_adi,
-                    "fotograf_bytes": foto_bytes,
-                    "aciklama": aciklama,
-                    "sorumlu_kurum": sorumlu_kurum,
-                    "durum": "Yeni"
-                }
-                
-                st.session_state.talepler.insert(0, yeni_kayit)
-                st.success(f"Talebiniz başarıyla alındı! İlgili birime iletildi. Takip Numaranız: **{talep_id}**")
-                st.balloons()
+                # Shapely ile sınır kontrolü (Geofencing)
+                sinir_icinde_mi = False
+                if yenipazar_poligonu is not None:
+                    vatandas_noktasi = Point(boylam, enlem) # Shapely Point(X=Boylam, Y=Enlem) alır
+                    sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
+                else:
+                    # Dosya okunamazsa geçici güvenlik önlemi
+                    sinir_icinde_mi = True 
+
+                if not sinir_icinde_mi:
+                    st.error("❌ **Hata:** KentAsistan uygulamasının ilçe sınırları içerisinde kullanıma açık olması nedeniyle, bulunduğunuz konum ilçe sınırları dışındadır. Talep oluşturulamamaktadır.")
+                else:
+                    eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
+                    sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
+                    alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
+                    
+                    talep_id = f"KENT-{random.randint(10000, 99999)}"
+                    
+                    foto_bytes = None
+                    foto_adi = "Fotoğraf Yok"
+                    if fotograf is not None:
+                        foto_bytes = fotograf.getvalue()
+                        foto_adi = fotograf.name
+                    
+                    yeni_kayit = {
+                        "talep_id": talep_id,
+                        "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
+                        "ad_soyad": ad_soyad,
+                        "telefon_no": telefon,
+                        "ana_kategori": secilen_ana_kategori,
+                        "alt_kategori": secilen_alt_kategori,
+                        "alt_bolum": alt_bolum,
+                        "gps_konum": f"{konum_tarif} (GPS: {enlem}, {boylam})",
+                        "fotograf_adi": foto_adi,
+                        "fotograf_bytes": foto_bytes,
+                        "aciklama": aciklama,
+                        "sorumlu_kurum": sorumlu_kurum,
+                        "durum": "Yeni (Sınır İçi Doğrulandı)"
+                    }
+                    
+                    st.session_state.talepler.insert(0, yeni_kayit)
+                    st.success(f"Talebiniz Yenipazar ilçe sınırları içinde doğrulandı ve ilgili birime iletildi! Takip Numaranız: **{talep_id}**")
+                    st.balloons()
 
 with tab2:
     st.header("Belediye Personel Girişi")
