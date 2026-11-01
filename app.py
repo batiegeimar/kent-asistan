@@ -131,16 +131,16 @@ with tab1:
         gonder_btn = st.form_submit_button("Talebi Gönder")
         
         if gonder_btn:
-            if not ad_soyad or not telefon or not aciklama:
-                st.error("Lütfen zorunlu alanları (*) doldurunuz.")
-            elif secilen_ilce != "Yenipazar":
-                st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
-            elif "İzin vermiyorum" in konum_izni:
-        st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
-    else:
-        # Telefonun GPS'inden gelen gerçek enlem ve boylam değerleri
-        enlem = location.get('latitude')
-        boylam = location.get('longitude')
+        if not ad_soyad or not telefon or not aciklama:
+            st.error("Lütfen zorunlu alanları (*) doldurunuz.")
+        elif secilen_ilce != "Yenipazar":
+            st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
+        elif "İzin vermiyorum" in konum_izni:
+            st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
+        else:
+            # Telefonun GPS'inden gelen gerçek enlem ve boylam değerleri
+            enlem = location.get('latitude')
+            boylam = location.get('longitude')
         
         sinir_icinde_mi = True
         if yenipazar_poligonu is not None:
