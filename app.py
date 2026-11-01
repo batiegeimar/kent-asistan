@@ -138,31 +138,26 @@ with tab1:
             elif "İzin vermiyorum" in konum_izni:
                 st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
             else:
-                # Telefonun GPS'inden gelen gerçek enlem ve boylam değerleri
-                enlem = location.get('latitude')
-                boylam = location.get('longitude')
-        
-                sinir_icinde_mi = True
-                if yenipazar_poligonu is not None:
-                    # Shapely kütüphanesi önce boylam, sonra enlem (longitude, latitude) bekler
-                    vatandas_noktasi = Point(boylam, enlem)
-                    sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
+        # Telefonun GPS'inden gelen gerçek enlem ve boylam değerleri
+        enlem = location.get('latitude')
+        boylam = location.get('longitude')
         
         sinir_icinde_mi = True
         if yenipazar_poligonu is not None:
+            # Shapely kütüphanesi önce boylam, sonra enlem (longitude, latitude) bekler
             vatandas_noktasi = Point(boylam, enlem)
             sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
         
         if not sinir_icinde_mi:
-        st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
-    else:
-        # Sınır içindeyse kategori eşleştirmelerini yap ve veritabanı işlemlerine geç
-        eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
-        sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
-        alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
+            st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
+        else:
+            # Sınır içindeyse kategori eşleştirmelerini yap ve veritabanı işlemlerine geç
+            eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
+            sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
+            alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
 
-        talep_id = f"KENT-{random.randint(10000, 99999)}"
-        simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            talep_id = f"KENT-{random.randint(10000, 99999)}"
+            simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         # Supabase kayıt kodların buraya gelecek
                     
