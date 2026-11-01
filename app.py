@@ -11,17 +11,11 @@ from streamlit_geolocation import streamlit_geolocation
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
 
-# Supabase Bağlantı Kurulumu
+# Supabase Bağlantı Kurulumu (Paylaştığın bilgilerle doğrudan yapılandırıldı)
 @st.cache_resource
 def init_supabase():
-    try:
-        url = st.secrets["supabase"]["url"]
-        key = st.secrets["supabase"]["key"]
-    except Exception:
-        # Buraya Supabase panelinden aldığın KENDİ gerçek proje URL'ini yapıştır:
-        url = "https://ziubmjjnvcxfedeyvxm.supabase.co"
-        key = "sb_publishable_iFUTiJplbyvS-LC-SzwG4g_rgfMbGXi"
-    
+    url = "https://ziubmjjnvcxfedeyvxm.supabase.co"
+    key = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
     try:
         return create_client(url, key)
     except Exception as e:
@@ -82,7 +76,7 @@ else:
 if supabase is not None:
     st.sidebar.success("🟢 Supabase: Bulut Veritabanı Aktif")
 else:
-    st.sidebar.warning("🟡 Supabase: Bağlantı Bilgileri Bekleniyor")
+    st.sidebar.warning("🟡 Supabase: Bağlantı Kurulamadı")
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan iletebilirsiniz.")
