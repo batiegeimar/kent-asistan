@@ -136,9 +136,8 @@ with tab1:
             elif secilen_ilce != "Yenipazar":
                 st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
             elif "İzin vermiyorum" in konum_izni:
-                st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
-            else:
-        else:
+        st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
+    else:
         # Telefonun GPS'inden gelen gerçek enlem ve boylam değerleri
         enlem = location.get('latitude')
         boylam = location.get('longitude')
@@ -160,7 +159,6 @@ with tab1:
             talep_id = f"KENT-{random.randint(10000, 99999)}"
             simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # Supabase kayıt kodların buraya gelecek
             foto_adi = "Fotoğraf Yok"
             if fotograf is not None:
                 foto_adi = fotograf.name
