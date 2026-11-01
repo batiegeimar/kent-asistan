@@ -1,3 +1,4 @@
 streamlit
-supabase
 shapely
+supabase
+streamlit-geolocation
