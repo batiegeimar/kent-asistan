@@ -5,39 +5,23 @@ import io
 import json
 from datetime import datetime
 from shapely.geometry import Point, shape
+from supabase import create_client, Client
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
 
-# Bellek Tabanlı Veri Deposu
-if "talepler" not in st.session_state:
-    st.session_state.talepler = [
-        {
-            "talep_id": "KENT-84920",
-            "tc_kimlik_no": "11111111111",
-            "ad_soyad": "Örnek Vatandaş",
-            "telefon_no": "05321112233",
-            "il": "Aydın",
-            "ilce": "Yenipazar",
-            "ana_kategori": "Su Altyapısı ile İlgili Talepler",
-            "alt_kategori": "Su Borusu Patlağı",
-            "alt_bolum": "Su ve Kanalizasyon Müdürlüğü",
-            "gps_konum": "Otomatik GPS (Enlem: 37.8524, Boylam: 27.9312)",
-            "olusturma_tarihi": "2026-11-01 08:30:00",
-            "fotograf_adi": "Fotoğraf Yok",
-            "fotograf_bytes": None,
-            "aciklama": "Ana cadde üzerinde su patlağı var.",
-            "sorumlu_kurum": "Su İdaresi",
-            "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
-        }
-    ]
+# Supabase Bağlantı Kurulumu
+@st.cache_resource
+def init_supabase():
+    try:
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["key"]
+        return create_client(url, key)
+    except Exception:
+        # Eğer secrets henüz tanımlanmadıysa test için uyarı / boş dönebilir
+        return None
 
-if "personeller" not in st.session_state:
-    st.session_state.personeller = [
-        {"eposta_adresi": "fenisleri@belediye.bel.tr", "ad_soyad": "Ahmet Yılmaz", "unvan": "Fen İşleri Müdürü"},
-        {"eposta_adresi": "suidaresi@belediye.bel.tr", "ad_soyad": "Canan Sucu", "unvan": "Su ve Kanalizasyon Amiri"},
-        {"eposta_adresi": "parkbahce@belediye.bel.tr", "ad_soyad": "Mehmet Demir", "unvan": "Park ve Bahçeler Amiri"}
-    ]
+supabase = init_supabase()
 
 # Kategori ve Birim Matrisi
 tum_veriler = [
@@ -88,6 +72,11 @@ if yenipazar_poligonu is not None:
 else:
     st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Bulunamadı!")
 
+if supabase is not None:
+    st.sidebar.success("🟢 Supabase: Bulut Veritabanı Aktif")
+else:
+    st.sidebar.warning("🟡 Supabase: Bağlantı Bilgileri Bekleniyor")
+
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan iletebilirsiniz.")
 
@@ -129,26 +118,21 @@ with tab1:
             ]
         )
         
-        fotograf = st.file_uploader("Hasarlı Bölgeçe Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
+        fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
         aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...")
         
         gonder_btn = st.form_submit_button("Talebi Gönder")
         
         if gonder_btn:
-            # 1. Kontrol: Zorunlu alanlar dolu mu?
             if not ad_soyad or not telefon or not aciklama:
                 st.error("Lütfen zorunlu alanları (*) doldurunuz.")
-            # 2. Kontrol: İlçe Yenipazar mı?
             elif secilen_ilce != "Yenipazar":
                 st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
-            # 3. Kontrol: Konum izni verilmiş mi? (Kesin engelleme noktası)
             elif "İzin vermiyorum" in konum_izni:
                 st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
             else:
-                # İzin verildiğinde telefonun GPS'inden güncel konum çekilir
-                boylam, enlem = 27.9312, 37.8524 
+                boylam, enlem = 27.9312, 37.8524 # Canlıda HTML5 Geolocation API ile alınacak koordinat
                 
-                # Shapely ile otomatik coğrafi sınır kontrolü
                 sinir_icinde_mi = True
                 if yenipazar_poligonu is not None:
                     vatandas_noktasi = Point(boylam, enlem)
@@ -164,13 +148,11 @@ with tab1:
                     talep_id = f"KENT-{random.randint(10000, 99999)}"
                     simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     
-                    foto_bytes = None
                     foto_adi = "Fotoğraf Yok"
                     if fotograf is not None:
-                        foto_bytes = fotograf.getvalue()
                         foto_adi = fotograf.name
                     
-                    yeni_kayit = {
+                    yeni_kayit_veri = {
                         "talep_id": talep_id,
                         "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
                         "ad_soyad": ad_soyad,
@@ -180,54 +162,61 @@ with tab1:
                         "ana_kategori": secilen_ana_kategori,
                         "alt_kategori": secilen_alt_kategori,
                         "alt_bolum": alt_bolum,
-                        "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
-                        "olusturma_tarihi": simdiki_zaman,
-                        "fotograf_adi": foto_adi,
-                        "fotograf_bytes": foto_bytes,
-                        "aciklama": aciklama,
                         "sorumlu_kurum": sorumlu_kurum,
+                        "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
+                        "aciklama": aciklama,
+                        "fotograf_adi": foto_adi,
                         "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
                     }
                     
-                    st.session_state.talepler.insert(0, yeni_kayit)
-                    st.success(f"GPS konumunuz doğrulandı ve talebiniz Yenipazar sınırları içinde başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
-                    st.balloons()
+                    # Supabase veritabanına kayıt ekleme
+                    if supabase is not None:
+                        try:
+                            supabase.table("talepler").insert(yeni_kayit_veri).execute()
+                            st.success(f"Talebiniz Supabase veritabanına başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
+                            st.balloons()
+                        except Exception as e:
+                            st.error(f"Veritabanı kayıt hatası: {e}")
+                    else:
+                        st.error("Supabase bağlantısı kurulamadı!")
 
 with tab2:
     st.header("Belediye Personel / Müdür Girişi")
-    st.info("💡 Test için şu e-postayı yazabilirsiniz: `fenisleri@belediye.bel.tr` veya `suidaresi@belediye.bel.tr`")
+    st.info("💡 Test için oluşturduğumuz e-postayı yazabilirsiniz (Örn: `fenisleri@belediye.bel.tr` / Şifre: `12345`)")
     
-    eposta = st.text_input("Personel E-Posta Adresi")
+    eposta_giris = st.text_input("Personel E-Posta Adresi")
+    sifre_giris = st.text_input("Şifre", type="password")
     
-    if st.button("Giriş Yap"):
-        bulunan_personel = next((p for p in st.session_state.personeller if p["eposta_adresi"].lower() == eposta.strip().lower()), None)
-        
-        if bulunan_personel or "@belediye.bel.tr" in eposta:
-            unvan = bulunan_personel["unvan"] if bulunan_personel else "Belediye Yetkilisi"
-            ad = bulunan_personel["ad_soyad"] if bulunan_personel else eposta.split("@")[0]
+    if st.button("Güvenli Giriş Yap"):
+        if supabase is not None and eposta_giris:
+            # Supabase personeller tablosundan yetki kontrolü
+            response = supabase.table("personeller").select("*").eq("eposta_adresi", eposta_giris.strip().lower()).eq("sifre", sifre_giris).execute()
+            personel_listesi = response.data
             
-            st.success(f"Hoş geldiniz, {ad} ({unvan})")
-            st.subheader("📋 Gelen Talepler ve Zaman Damgalı Kayıtlar")
-            
-            for talep in st.session_state.talepler:
-                with st.expander(f"📌 {talep['talep_id']} - {talep['ana_kategori']} / {talep['alt_kategori']} ({talep['durum']})"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**İl / İlçe:** {talep.get('il', 'Aydın')} / {talep.get('ilce', 'Yenipazar')}")
-                        st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
-                        st.markdown(f"**Telefon:** {talep['telefon_no']}")
-                        st.markdown(f"**Oluşturulma Tarihi:** {talep.get('olusturma_tarihi', 'Bilinmiyor')}")
-                        st.markdown(f"**Konum Bilgisi:** {talep['gps_konum']}")
-                        st.markdown(f"**Sorumlu Birim:** {talep['alt_bolum']}")
-                    with col2:
-                        st.markdown(f"**Açıklama:** {talep['aciklama']}")
-                    
-                    if talep["fotograf_bytes"] is not None:
-                        st.markdown("---")
-                        st.markdown("📷 **Yüklenen Hasar Fotoğrafı:**")
-                        image = Image.open(io.BytesIO(talep["fotograf_bytes"]))
-                        st.image(image, caption=talep["fotograf_adi"], use_column_width=True)
-                    else:
-                        st.info("Bu talep için fotoğraf yüklenmemiş.")
+            if personel_listesi:
+                personel = personel_listesi[0]
+                st.success(f"Hoş geldiniz, {personel['ad_soyad']} ({personel['unvan']} - {personel['sorumlu_birim']})")
+                
+                st.subheader(f"📋 {personel['sorumlu_birim']} - Gelen Talepler (Supabase Canlı Veri)")
+                
+                # Sadece ilgili birimin taleplerini çekelim (RBAC - Rol Tabanlı Filtreleme)
+                talep_response = supabase.table("talepler").select("*").eq("alt_bolum", personel['sorumlu_birim']).order("olusturma_tarihi", desc=True).execute()
+                birim_talepleri = talep_response.data
+                
+                if birim_talepleri:
+                    for talep in birim_talepleri:
+                        with st.expander(f"📌 {talep['talep_id']} - {talep['alt_kategori']} ({talep['durum']})"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
+                                st.markdown(f"**Telefon:** {talep['telefon_no']}")
+                                st.markdown(f"**Oluşturulma Tarihi:** {talep['olusturma_tarihi']}")
+                                st.markdown(f"**Konum:** {talep['gps_konum']}")
+                            with col2:
+                                st.markdown(f"**Açıklama:** {talep['aciklama']}")
+                else:
+                    st.info("Biriminize ait henüz gelen aktif talep bulunmamaktadır.")
+            else:
+                st.error("Hatalı e-posta adresi veya şifre!")
         else:
-            st.error("Bu e-posta adresiyle kayıtlı yetkili personel bulunamadı!")
+            st.warning("Lütfen e-posta adresinizi giriniz ve Supabase bağlantısını kontrol ediniz.")
