@@ -9,7 +9,7 @@ from shapely.geometry import Point, shape
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
 
-# Bellek Tabanlı Veri Deposu (Zaman damgası eklendi)
+# Bellek Tabanlı Veri Deposu
 if "talepler" not in st.session_state:
     st.session_state.talepler = [
         {
@@ -17,6 +17,8 @@ if "talepler" not in st.session_state:
             "tc_kimlik_no": "11111111111",
             "ad_soyad": "Örnek Vatandaş",
             "telefon_no": "05321112233",
+            "il": "Aydın",
+            "ilce": "Yenipazar",
             "ana_kategori": "Su Altyapısı ile İlgili Talepler",
             "alt_kategori": "Su Borusu Patlağı",
             "alt_bolum": "Su ve Kanalizasyon Müdürlüğü",
@@ -26,7 +28,7 @@ if "talepler" not in st.session_state:
             "fotograf_bytes": None,
             "aciklama": "Ana cadde üzerinde su patlağı var.",
             "sorumlu_kurum": "Su İdaresi",
-            "durum": "Yeni (Sınır İçi Doğrulandı)"
+            "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
         }
     ]
 
@@ -48,7 +50,7 @@ tum_veriler = [
     {"ana_kategori": "Doğalgaz Altyapısı ile İlgili Talepler", "alt_kategori": "Doğalgaz Kaçağı ile İlgili Talepler", "sorumlu_kurum": "Doğalgaz Dağıtım Şirketi", "alt_bolum": "Doğalgaz Acil Servis"},
     {"ana_kategori": "Çevre Kirliliği ile İlgili Talepler", "alt_kategori": "Hafriyat / Kaçak Atık Dökümü", "sorumlu_kurum": "Belediye", "alt_bolum": "Zabıta / Çevre Koruma"},
     {"ana_kategori": "Temizlik İşleri ile İlgili Talepler", "alt_kategori": "Çöp Konteyneri Kırık / Eksik", "sorumlu_kurum": "Belediye", "alt_bolum": "Temizlik İşleri Müdürlüğü"},
-    {"ana_kategori": "Park y Bahçeler ile İlgili Talepler", "alt_kategori": "Park Aydınlatma Arızası", "sorumlu_kurum": "Belediye", "alt_bolum": "Park ve Bahçeler Müdürlüğü"}
+    {"ana_kategori": "Park ve Bahçeler ile İlgili Talepler", "alt_kategori": "Park Aydınlatma Arızası", "sorumlu_kurum": "Belediye", "alt_bolum": "Park ve Bahçeler Müdürlüğü"}
 ]
 
 ana_kategoriler = sorted(list(set([item["ana_kategori"] for item in tum_veriler])))
@@ -94,6 +96,16 @@ tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Personel / Yönetim
 with tab1:
     st.header("Yeni Talep Oluştur")
     
+    # İl ve İlçe Seçimi (Kurumsal Bağlam)
+    col_il1, col_il2 = st.columns(2)
+    with col_il1:
+        secilen_il = st.selectbox("İl", options=["Aydın", "Diğer"], index=0)
+    with col_il2:
+        secilen_ilce = st.selectbox("İlçe", options=["Yenipazar", "Diğer"], index=0)
+        
+    if secilen_ilce != "Yenipazar":
+        st.warning("⚠️ KentAsistan şu an yalnızca **Yenipazar** ilçesinde aktif olarak hizmet vermektedir.")
+    
     tc_kimlik = st.text_input("TC Kimlik Numarası (Opsiyonel)")
     ad_soyad = st.text_input("Ad Soyad *")
     telefon = st.text_input("Telefon Numarası *")
@@ -109,16 +121,16 @@ with tab1:
         konum_tarif = st.text_input("Konum / Mahalle, Sokak veya Adres Tarifi *", placeholder="Örn: Çarşı Mah. Atatürk Cad. No:12")
         
         st.markdown("---")
-        st.subheader("📍 Otomatik GPS Konum Doğrulama (Geofencing)")
-        st.info("Sistem, mobil cihazınızın GPS koordinatlarını alarak Yenipazar ilçe sınırları içinde olup olmadığınızı otomatik olarak denetler.")
+        st.subheader("📍 Tarayıcı Konum İzni ve Otomatik GPS Doğrulama")
+        st.info("Sistem, QR kod veya link ile bağlandığınız cihazınızdan tarayıcı konum onayı isteyerek resmi Yenipazar ilçe sınırları içinde olup olmadığınızı otomatik denetler.")
         
-        # Manuel radyo seçimini kaldırdık, yerine otomatik koordinat simülasyonu/test seçeneği getirdik
-        gps_senaryo = st.selectbox(
-            "GPS Konum Simülasyonu (Test Amaçlı):",
+        # Konum Onay Simülasyonu / Tarayıcı İzin Simülasyonu
+        konum_izni_durumu = st.radio(
+            "Tarayıcı Konum Erişimi (GPS İzni):",
             [
-                "Yenipazar Merkez (Sınır İçi - Otomatik Doğrulanır)", 
-                "Yenipazar Çarşı Bölgesi (Sınır İçi - Otomatik Doğrulanır)", 
-                "İlçe Dışı Nokta (Sınır Dışı - Reddedilir)"
+                "🔐 Konum İznini Paylaş ve Otomatik Doğrula (Yenipazar Merkez / Sınır İçi)", 
+                "🔐 Konum İznini Paylaş ve Otomatik Doğrula (Yenipazar Çarşı / Sınır İçi)", 
+                "❌ Konum İznini Reddet veya İlçe Dışındayım"
             ]
         )
         
@@ -130,14 +142,16 @@ with tab1:
         if gonder_btn:
             if not ad_soyad or not telefon or not aciklama or not konum_tarif:
                 st.error("Lütfen zorunlu alanları (*) doldurunuz.")
+            elif secilen_ilce != "Yenipazar":
+                st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
             else:
-                # Seçilen senaryoya göre gerçekçi koordinatlar atayalım
-                if "Merkez" in gps_senaryo:
+                # Konum izni durumuna göre GPS koordinatları atama
+                if "Merkez" in konum_izni_durumu:
                     boylam, enlem = 27.9312, 37.8524
-                elif "Çarşı" in gps_senaryo:
+                elif "Çarşı" in konum_izni_durumu:
                     boylam, enlem = 27.9350, 37.8500
                 else:
-                    boylam, enlem = 27.0000, 38.0000 # İlçe dışı
+                    boylam, enlem = 27.0000, 38.0000 # İlçe dışı veya izin reddedildi
                 
                 # Shapely ile otomatik coğrafi sınır kontrolü
                 sinir_icinde_mi = True
@@ -145,8 +159,8 @@ with tab1:
                     vatandas_noktasi = Point(boylam, enlem)
                     sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
                 
-                if not sinir_icinde_mi:
-                    st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. KentAsistan yalnızca ilçe sınırları içerisindeki talepleri kabul etmektedir.")
+                if not sinir_icinde_mi or "Reddet" in konum_izni_durumu:
+                    st.error("❌ **Hata:** Konum izni verilmedi veya cihazınızın GPS koordinatları Yenipazar ilçe sınırları dışındadır. Talep oluşturulamamaktadır.")
                 else:
                     eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
                     sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
@@ -166,6 +180,8 @@ with tab1:
                         "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
                         "ad_soyad": ad_soyad,
                         "telefon_no": telefon,
+                        "il": secilen_il,
+                        "ilce": secilen_ilce,
                         "ana_kategori": secilen_ana_kategori,
                         "alt_kategori": secilen_alt_kategori,
                         "alt_bolum": alt_bolum,
@@ -175,11 +191,11 @@ with tab1:
                         "fotograf_bytes": foto_bytes,
                         "aciklama": aciklama,
                         "sorumlu_kurum": sorumlu_kurum,
-                        "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
+                        "durum": "Yeni (Tarayıcı GPS Onaylandı)"
                     }
                     
                     st.session_state.talepler.insert(0, yeni_kayit)
-                    st.success(f"Talebiniz GPS ile Yenipazar sınırları içinde doğrulandı ve kaydedildi! Takip Numaranız: **{talep_id}**")
+                    st.success(f"Tarayıcı konum izni doğrulandı ve talebiniz Yenipazar sınırları içinde başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
                     st.balloons()
 
 with tab2:
@@ -202,6 +218,7 @@ with tab2:
                 with st.expander(f"📌 {talep['talep_id']} - {talep['ana_kategori']} / {talep['alt_kategori']} ({talep['durum']})"):
                     col1, col2 = st.columns(2)
                     with col1:
+                        st.markdown(f"**İl / İlçe:** {talep.get('il', 'Aydın')} / {talep.get('ilce', 'Yenipazar')}")
                         st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
                         st.markdown(f"**Telefon:** {talep['telefon_no']}")
                         st.markdown(f"**Oluşturulma Tarihi:** {talep.get('olusturma_tarihi', 'Bilinmiyor')}")
