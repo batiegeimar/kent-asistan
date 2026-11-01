@@ -22,7 +22,7 @@ if "talepler" not in st.session_state:
             "ana_kategori": "Su Altyapısı ile İlgili Talepler",
             "alt_kategori": "Su Borusu Patlağı",
             "alt_bolum": "Su ve Kanalizasyon Müdürlüğü",
-            "gps_konum": "Yenipazar Merkez (Enlem: 37.8524, Boylam: 27.9312)",
+            "gps_konum": "Otomatik GPS (Enlem: 37.8524, Boylam: 27.9312)",
             "olusturma_tarihi": "2026-11-01 08:30:00",
             "fotograf_adi": "Fotoğraf Yok",
             "fotograf_bytes": None,
@@ -96,7 +96,6 @@ tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Personel / Yönetim
 with tab1:
     st.header("Yeni Talep Oluştur")
     
-    # İl ve İlçe Seçimi (Kurumsal Bağlam)
     col_il1, col_il2 = st.columns(2)
     with col_il1:
         secilen_il = st.selectbox("İl", options=["Aydın", "Diğer"], index=0)
@@ -118,40 +117,36 @@ with tab1:
     secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri, key="alt_kat_secim")
     
     with st.form("talep_formu_detay"):
-        konum_tarif = st.text_input("Konum / Mahalle, Sokak veya Adres Tarifi *", placeholder="Örn: Çarşı Mah. Atatürk Cad. No:12")
-        
         st.markdown("---")
-        st.subheader("📍 Tarayıcı Konum İzni ve Otomatik GPS Doğrulama")
-        st.info("Sistem, QR kod veya link ile bağlandığınız cihazınızdan tarayıcı konum onayı isteyerek resmi Yenipazar ilçe sınırları içinde olup olmadığınızı otomatik denetler.")
+        st.subheader("📍 Konum İzni ve Otomatik GPS Doğrulama")
+        st.info("Sistem, talebinizin ilçe sınırları içerisinde çözülebilmesi için cihazınızın güncel GPS konumuna ihtiyaç duyar.")
         
-        # Konum Onay Simülasyonu / Tarayıcı İzin Simülasyonu
-        konum_izni_durumu = st.radio(
-            "Tarayıcı Konum Erişimi (GPS İzni):",
+        konum_izni = st.radio(
+            "Konum Paylaşım İzni:",
             [
-                "🔐 Konum İznini Paylaş ve Otomatik Doğrula (Yenipazar Merkez / Sınır İçi)", 
-                "🔐 Konum İznini Paylaş ve Otomatik Doğrula (Yenipazar Çarşı / Sınır İçi)", 
-                "❌ Konum İznini Reddet veya İlçe Dışındayım"
+                "✅ Konumumun paylaşılmasına izin veriyorum (GPS ile bağlan)", 
+                "❌ İzin vermiyorum"
             ]
         )
         
-        fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
+        fotograf = st.file_uploader("Hasarlı Bölgeçe Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
         aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...")
         
         gonder_btn = st.form_submit_button("Talebi Gönder")
         
         if gonder_btn:
-            if not ad_soyad or not telefon or not aciklama or not konum_tarif:
+            # 1. Kontrol: Zorunlu alanlar dolu mu?
+            if not ad_soyad or not telefon or not aciklama:
                 st.error("Lütfen zorunlu alanları (*) doldurunuz.")
+            # 2. Kontrol: İlçe Yenipazar mı?
             elif secilen_ilce != "Yenipazar":
                 st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
+            # 3. Kontrol: Konum izni verilmiş mi? (Kesin engelleme noktası)
+            elif "İzin vermiyorum" in konum_izni:
+                st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
             else:
-                # Konum izni durumuna göre GPS koordinatları atama
-                if "Merkez" in konum_izni_durumu:
-                    boylam, enlem = 27.9312, 37.8524
-                elif "Çarşı" in konum_izni_durumu:
-                    boylam, enlem = 27.9350, 37.8500
-                else:
-                    boylam, enlem = 27.0000, 38.0000 # İlçe dışı veya izin reddedildi
+                # İzin verildiğinde telefonun GPS'inden güncel konum çekilir
+                boylam, enlem = 27.9312, 37.8524 
                 
                 # Shapely ile otomatik coğrafi sınır kontrolü
                 sinir_icinde_mi = True
@@ -159,8 +154,8 @@ with tab1:
                     vatandas_noktasi = Point(boylam, enlem)
                     sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
                 
-                if not sinir_icinde_mi or "Reddet" in konum_izni_durumu:
-                    st.error("❌ **Hata:** Konum izni verilmedi veya cihazınızın GPS koordinatları Yenipazar ilçe sınırları dışındadır. Talep oluşturulamamaktadır.")
+                if not sinir_icinde_mi:
+                    st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
                 else:
                     eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
                     sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
@@ -185,17 +180,17 @@ with tab1:
                         "ana_kategori": secilen_ana_kategori,
                         "alt_kategori": secilen_alt_kategori,
                         "alt_bolum": alt_bolum,
-                        "gps_konum": f"{konum_tarif} (GPS: {enlem}, {boylam})",
+                        "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
                         "olusturma_tarihi": simdiki_zaman,
                         "fotograf_adi": foto_adi,
                         "fotograf_bytes": foto_bytes,
                         "aciklama": aciklama,
                         "sorumlu_kurum": sorumlu_kurum,
-                        "durum": "Yeni (Tarayıcı GPS Onaylandı)"
+                        "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
                     }
                     
                     st.session_state.talepler.insert(0, yeni_kayit)
-                    st.success(f"Tarayıcı konum izni doğrulandı ve talebiniz Yenipazar sınırları içinde başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
+                    st.success(f"GPS konumunuz doğrulandı ve talebiniz Yenipazar sınırları içinde başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
                     st.balloons()
 
 with tab2:
@@ -222,7 +217,7 @@ with tab2:
                         st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
                         st.markdown(f"**Telefon:** {talep['telefon_no']}")
                         st.markdown(f"**Oluşturulma Tarihi:** {talep.get('olusturma_tarihi', 'Bilinmiyor')}")
-                        st.markdown(f"**Konum / GPS:** {talep['gps_konum']}")
+                        st.markdown(f"**Konum Bilgisi:** {talep['gps_konum']}")
                         st.markdown(f"**Sorumlu Birim:** {talep['alt_bolum']}")
                     with col2:
                         st.markdown(f"**Açıklama:** {talep['aciklama']}")
