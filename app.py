@@ -148,7 +148,7 @@ with tab1:
                     vatandas_noktasi = Point(boylam, enlem)
                     sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
         
-         sinir_icinde_mi = True
+        sinir_icinde_mi = True
         if yenipazar_poligonu is not None:
             vatandas_noktasi = Point(boylam, enlem)
             sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
