@@ -138,6 +138,7 @@ with tab1:
             elif "İzin vermiyorum" in konum_izni:
                 st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
             else:
+        else:
         # Telefonun GPS'inden gelen gerçek enlem ve boylam değerleri
         enlem = location.get('latitude')
         boylam = location.get('longitude')
@@ -158,12 +159,11 @@ with tab1:
 
             talep_id = f"KENT-{random.randint(10000, 99999)}"
             simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Supabase kayıt kodların buraya gelecek
-                    
-                    foto_adi = "Fotoğraf Yok"
-                    if fotograf is not None:
-                        foto_adi = fotograf.name
+            
+            # Supabase kayıt kodların buraya gelecek
+            foto_adi = "Fotoğraf Yok"
+            if fotograf is not None:
+                foto_adi = fotograf.name
                     
                     yeni_kayit_veri = {
                         "talep_id": talep_id,
