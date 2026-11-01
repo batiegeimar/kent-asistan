@@ -17,8 +17,8 @@ def init_supabase():
         url = st.secrets["supabase"]["url"]
         key = st.secrets["supabase"]["key"]
         return create_client(url, key)
-    except Exception:
-        # Eğer secrets henüz tanımlanmadıysa test için uyarı / boş dönebilir
+    except Exception as e:
+        st.error(f"⚠️ Supabase Bağlantı Hatası Detayı: {e}")
         return None
 
 supabase = init_supabase()
