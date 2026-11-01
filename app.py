@@ -15,13 +15,12 @@ st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Port
 @st.cache_resource
 def init_supabase():
     try:
-        # Önce st.secrets üzerinden okumayı dene
         url = st.secrets["supabase"]["url"]
         key = st.secrets["supabase"]["key"]
     except Exception:
-        # Eğer secrets paneli okunamazsa doğrudan kod içindeki projenin bilgileriyle bağlan
+        # Buraya Supabase panelinden aldığın KENDİ gerçek proje URL'ini yapıştır:
         url = "https://ziubmjjnvcxfedeyvxm.supabase.co"
-        key = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
+        key = "sb_publishable_iFUTiJplbyvS-LC-SzwG4g_rgfMbGXi"
     
     try:
         return create_client(url, key)
