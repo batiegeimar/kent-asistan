@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from shapely.geometry import Point, shape
 from supabase import create_client, Client
+from streamlit_geolocation import streamlit_geolocation
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
@@ -112,84 +113,88 @@ with tab1:
     
     secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri, key="alt_kat_secim")
     
-    with st.form("talep_formu_detay"):
-        st.markdown("---")
-        st.subheader("📍 Konum İzni ve Otomatik GPS Doğrulama")
-        st.info("Sistem, talebinizin ilçe sınırları içerisinde çözülebilmesi için cihazınızın güncel GPS konumuna ihtiyaç duyar.")
-        
-        konum_izni = st.radio(
-            "Konum Paylaşım İzni:",
-            [
-                "✅ Konumumun paylaşılmasına izin veriyorum (GPS ile bağlan)", 
-                "❌ İzin vermiyorum"
-            ]
-        )
-        
-        fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
-        aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...")
-        
-        gonder_btn = st.form_submit_button("Talebi Gönder")
-        
-        if gonder_btn:
+    st.markdown("---")
+    st.subheader("📍 Konum İzni ve Otomatik GPS Doğrulama")
+    st.info("Sistem, talebinizin ilçe sınırları içerisinde çözülebilmesi için cihazınızın güncel GPS konumuna ihtiyaç duyar.")
+    
+    # Canlı HTML5 / Tarayıcı GPS Konumu Alma Bileşeni
+    location = streamlit_geolocation()
+
+    konum_izni = st.radio(
+        "Konum Paylaşım İzni:",
+        [
+            "✅ Konumumun paylaşılmasına izin veriyorum (GPS ile bağlan)", 
+            "❌ İzin vermiyorum"
+        ]
+    )
+    
+    fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"])
+    aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...")
+    
+    gonder_btn = st.button("Talebi Gönder")
+    
+    if gonder_btn:
         if not ad_soyad or not telefon or not aciklama:
             st.error("Lütfen zorunlu alanları (*) doldurunuz.")
         elif secilen_ilce != "Yenipazar":
             st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
         elif "İzin vermiyorum" in konum_izni:
             st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
+        elif location is None or location.get('latitude') is None or location.get('longitude') is None:
+            st.error("❌ **Hata:** GPS konum veriniz alınamadı. Lütfen cihazınızdan/tarayıcınızdan konum erişimine izin verdiğinizden ve GPS butonuna tıkladığınızdan emin olun.")
         else:
-            # Telefonun GPS'inden gelen gerçek enlem ve boylam değerleri
+            # GPS'ten alınan koordinatlar
             enlem = location.get('latitude')
             boylam = location.get('longitude')
-        
-        sinir_icinde_mi = True
-        if yenipazar_poligonu is not None:
-            # Shapely kütüphanesi önce boylam, sonra enlem (longitude, latitude) bekler
-            vatandas_noktasi = Point(boylam, enlem)
-            sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
-        
-        if not sinir_icinde_mi:
-            st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
-        else:
-            # Sınır içindeyse kategori eşleştirmelerini yap ve veritabanı işlemlerine geç
-            eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
-            sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
-            alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
-
-            talep_id = f"KENT-{random.randint(10000, 99999)}"
-            simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            foto_adi = "Fotoğraf Yok"
-            if fotograf is not None:
-                foto_adi = fotograf.name
-                    
-                    yeni_kayit_veri = {
-                        "talep_id": talep_id,
-                        "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
-                        "ad_soyad": ad_soyad,
-                        "telefon_no": telefon,
-                        "il": secilen_il,
-                        "ilce": secilen_ilce,
-                        "ana_kategori": secilen_ana_kategori,
-                        "alt_kategori": secilen_alt_kategori,
-                        "alt_bolum": alt_bolum,
-                        "sorumlu_kurum": sorumlu_kurum,
-                        "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
-                        "aciklama": aciklama,
-                        "fotograf_adi": foto_adi,
-                        "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
-                    }
-                    
-                    # Supabase veritabanına kayıt ekleme
-                    if supabase is not None:
-                        try:
-                            supabase.table("talepler").insert(yeni_kayit_veri).execute()
-                            st.success(f"Talebiniz Supabase veritabanına başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
-                            st.balloons()
-                        except Exception as e:
-                            st.error(f"Veritabanı kayıt hatası: {e}")
-                    else:
-                        st.error("Supabase bağlantısı kurulamadı!")
+            sinir_icinde_mi = True
+            if yenipazar_poligonu is not None:
+                # Shapely kütüphanesi önce boylam, sonra enlem (longitude, latitude) bekler
+                vatandas_noktasi = Point(boylam, enlem)
+                sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
+            
+            if not sinir_icinde_mi:
+                st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
+            else:
+                # Sınır içindeyse kategori eşleştirmelerini yap ve veritabanına kaydet
+                eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
+                sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
+                alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
+
+                talep_id = f"KENT-{random.randint(10000, 99999)}"
+                simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                foto_adi = "Fotoğraf Yok"
+                if fotograf is not None:
+                    foto_adi = fotograf.name
+                
+                yeni_kayit_veri = {
+                    "talep_id": talep_id,
+                    "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
+                    "ad_soyad": ad_soyad,
+                    "telefon_no": telefon,
+                    "il": secilen_il,
+                    "ilce": secilen_ilce,
+                    "ana_kategori": secilen_ana_kategori,
+                    "alt_kategori": secilen_alt_kategori,
+                    "alt_bolum": alt_bolum,
+                    "sorumlu_kurum": sorumlu_kurum,
+                    "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
+                    "aciklama": aciklama,
+                    "fotograf_adi": foto_adi,
+                    "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
+                }
+                
+                # Supabase veritabanına kayıt ekleme
+                if supabase is not None:
+                    try:
+                        supabase.table("talepler").insert(yeni_kayit_veri).execute()
+                        st.success(f"Talebiniz Supabase veritabanına başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Veritabanı kayıt hatası: {e}")
+                else:
+                    st.error("Supabase bağlantısı kurulamadı!")
 
 with tab2:
     st.header("Belediye Personel / Müdür Girişi")
