@@ -14,8 +14,15 @@ st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Port
 @st.cache_resource
 def init_supabase():
     try:
+        # Önce st.secrets üzerinden okumayı dene
         url = st.secrets["supabase"]["url"]
         key = st.secrets["supabase"]["key"]
+    except Exception:
+        # Eğer secrets paneli okunamazsa doğrudan kod içindeki projenin bilgileriyle bağlan
+        url = "https://ziubmjjnvcxfedeyvxm.supabase.co"
+        key = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
+    
+    try:
         return create_client(url, key)
     except Exception as e:
         st.error(f"⚠️ Supabase Bağlantı Hatası Detayı: {e}")
