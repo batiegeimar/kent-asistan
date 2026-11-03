@@ -304,4 +304,120 @@ with tab2:
                 
                 st.markdown("#### ➕ Yeni Kurum Yöneticisi / Personel Tanımla")
                 p_ad = st.text_input("Ad Soyad")
-                p_tel = st.text_input("Telefon Numarası (Giriş
+                p_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)")
+                p_sifre = st.text_input("Şifre", type="password")
+                p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Müdür", "Saha Ekip Şefi"])
+                
+                birim_secenekleri = [k["alt_bolum"] for k in st.session_state["kurumlar"]]
+                p_birim = st.selectbox("Sorumlu Olduğu Birim / Kurum", birim_secenekleri)
+                
+                if st.button("Yönetici Hesabı Oluştur"):
+                    if p_ad and p_tel and p_sifre:
+                        st.session_state["personeller"].append({
+                            "ad_soyad": p_ad,
+                            "telefon_no": p_tel.strip(),
+                            "sifre": p_sifre,
+                            "unvan": p_unvan,
+                            "sorumlu_birim": p_birim
+                        })
+                        st.success(f"✅ {p_ad} için {p_tel} nolu hesap başarıyla oluşturuldu!")
+                        st.rerun()
+                    else:
+                        st.error("Lütfen zorunlu alanları doldurun.")
+            st.markdown("---")
+
+        # --- TALEP YÖNETİMİ VE FİLTRELEME ---
+        if personel["unvan"] == "Süper Admin":
+            st.subheader("📋 Tüm Kurumların Gelen Talepleri (Genel Koordinasyon)")
+            gosterilecek_talepler = st.session_state["yerel_talepler"]
+        else:
+            st.subheader(f"📋 {personel['sorumlu_birim']} - Biriminize Gelen Talepler")
+            gosterilecek_talepler = [t for t in st.session_state["yerel_talepler"] if t.get('alt_bolum') == personel['sorumlu_birim']]
+        
+        if not gosterilecek_talepler:
+            st.info("Biriminize ait aktif talep bulunmamaktadır.")
+        
+        for idx, talep in enumerate(gosterilecek_talepler):
+            with st.expander(f"📌 {talep['talep_id']} - {talep['alt_kategori']} | Kurum: {talep.get('sorumlu_kurum','')} ({talep['durum']})"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
+                    st.markdown(f"**Telefon:** {talep['telefon_no']}")
+                    st.markdown(f"**Sorumlu Kurum:** {talep.get('sorumlu_kurum', 'Belediye')}")
+                    st.markdown(f"**Alt Birim:** {talep.get('alt_bolum', '')}")
+                    st.markdown(f"**Oluşturulma Tarihi:** {talep.get('olusturma_tarihi', 'Bilinmiyor')}")
+                    st.markdown(f"**Konum:** {talep['gps_konum']}")
+                    st.markdown(f"**Mevcut Durum:** {talep.get('durum', 'Yeni')}")
+                    st.markdown(f"**Atanan Personel:** {talep.get('atanan_personel', 'Atanmadı')}")
+                    st.markdown(f"**Açıklama:** {talep['aciklama']}")
+                    st.markdown(f"**Yönetici Notu:** {talep.get('yönetici_notu', 'Yok')}")
+                    
+                    # 🗺️ Google Haritalar Rota
+                    lat = talep.get('enlem')
+                    lon = talep.get('boylam')
+                    if lat and lon:
+                        maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                        st.markdown(f"🗺️ **[Google Haritalar'da Aç ve Rota Oluştur]({maps_url})**", unsafe_allow_html=True)
+                    
+                    # 💬 WhatsApp Bildirim
+                    if talep.get('atanan_personel') != "Atanmadı":
+                        wa_mesaj = f"🔔 *Yeni Saha Görevi ({talep['talep_id']})*\n*Kurum:* {talep.get('sorumlu_kurum','')}\n*Kategori:* {talep['alt_kategori']}\n*Açıklama:* {talep['aciklama']}\n*Not:* {talep.get('yönetici_notu','')}\n*Konum:* https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                        encoded_msg = urllib.parse.quote(wa_mesaj)
+                        wa_url = f"https://wa.me/?text={encoded_msg}"
+                        st.markdown(f"💬 **[WhatsApp ile Saha Personeline Gönder]({wa_url})**", unsafe_allow_html=True)
+
+                with col2:
+                    foto_b64_data = talep.get('fotograf_b64', '')
+                    if foto_b64_data:
+                        try:
+                            image_bytes = base64.b64decode(foto_b64_data)
+                            image = Image.open(io.BytesIO(image_bytes))
+                            st.image(image, caption=f"Yüklenen Fotoğraf: {talep.get('fotograf_adi', 'Görsel')}", use_container_width=True)
+                        except Exception:
+                            st.info("📷 Fotoğraf yüklenmiş ancak çözülemedi.")
+                    else:
+                        st.info("📷 Bu talep için fotoğraf yüklenmemiş.")
+                
+                st.markdown("---")
+                st.markdown("⚙️ **Yönetici İşlemleri ve Atama Paneli**")
+                
+                durumlar = ["Yeni (GPS Sınır İçi Doğrulandı)", "İnceleniyor", "Saha Ekibine Sevk Edildi", "Çözüldü - Kapatıldı"]
+                mevcut_durum = talep.get('durum', durumlar[0])
+                durum_index = durumlar.index(mevcut_durum) if mevcut_durum in durumlar else 0
+
+                personeller = ["Atanmadı"] + [p["ad_soyad"] for p in st.session_state["personeller"] if p["unvan"] != "Süper Admin"]
+                mevcut_personel = talep.get('atanan_personel', "Atanmadı")
+                personel_index = personeller.index(mevcut_personel) if mevcut_personel in personeller else 0
+
+                with st.form(key=f"form_{talep['talep_id']}_{idx}"):
+                    yeni_durum = st.selectbox(
+                        "Talep Durumunu Güncelle",
+                        durumlar,
+                        index=durum_index,
+                        key=f"durum_sel_{talep['talep_id']}_{idx}"
+                    )
+                    
+                    atanacak_kisi = st.selectbox(
+                        "Saha Personeli / Kurum Yetkilisi Ata",
+                        personeller,
+                        index=personel_index,
+                        key=f"personel_sel_{talep['talep_id']}_{idx}"
+                    )
+                    
+                    yonetici_notu_input = st.text_area(
+                        "Yönetici / Kurum Notu Ekle",
+                        value=talep.get('yönetici_notu', ''),
+                        key=f"not_input_{talep['talep_id']}_{idx}"
+                    )
+                    
+                    kaydet_buton = st.form_submit_button(f"💾 Güncellemeyi Kaydet ({talep['talep_id']})")
+                    
+                    if kaydet_buton:
+                        for og in st.session_state["yerel_talepler"]:
+                            if og["talep_id"] == talep["talep_id"]:
+                                og['durum'] = yeni_durum
+                                og['atanan_personel'] = atanacak_kisi
+                                og['yönetici_notu'] = yonetici_notu_input
+                                break
+                        st.success(f"✅ {talep['talep_id']} numaralı talep güncellendi!")
+                        st.rerun()
