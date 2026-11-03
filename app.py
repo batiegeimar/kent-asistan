@@ -3,6 +3,7 @@ import random
 from PIL import Image
 import io
 import json
+import base64
 from datetime import datetime
 from shapely.geometry import Point, shape
 from supabase import create_client, Client
@@ -154,7 +155,14 @@ with tab1:
                 alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
 
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
-                foto_adi = fotograf.name if fotograf is not None else "Fotoğraf Yok"
+                
+                foto_adi = "Fotoğraf Yok"
+                foto_b64 = ""
+                if fotograf is not None:
+                    foto_adi = fotograf.name
+                    # Fotoğrafı base64 formatına çevirerek kaydedelim
+                    bytes_data = fotograf.getvalue()
+                    foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
                 
                 yeni_kayit_veri = {
                     "talep_id": talep_id,
@@ -170,8 +178,14 @@ with tab1:
                     "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
                     "aciklama": aciklama,
                     "fotograf_adi": foto_adi,
+                    "fotograf_b64": foto_b64, # Görsel verisi
                     "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
                 }
+                
+                # Session state içinde de saklayalım ki test modunda anında panelde görünsün
+                if "yerel_talepler" not in st.session_state:
+                    st.session_state["yerel_talepler"] = []
+                st.session_state["yerel_talepler"].insert(0, yeni_kayit_veri)
                 
                 if supabase is not None:
                     try:
@@ -193,7 +207,6 @@ with tab2:
         if eposta_giris:
             personel_listesi = []
             
-            # 1. Önce Supabase'den sorgulamayı dene
             if supabase is not None:
                 try:
                     response = supabase.table("personeller").select("*").eq("eposta_adresi", eposta_giris.strip().lower()).eq("sifre", sifre_giris).execute()
@@ -201,7 +214,6 @@ with tab2:
                 except Exception:
                     pass
             
-            # 2. Supabase bağlı değilse veya test verisi aranıyorsa yerel test yetkilisi tanımla
             if not personel_listesi and eposta_giris.strip().lower() == "fenisleri@belediye.bel.tr" and sifre_giris == "12345":
                 personel_listesi = [{
                     "ad_soyad": "Ahmet Yılmaz (Fen İşleri Müdürü)",
@@ -223,7 +235,12 @@ with tab2:
                     except Exception:
                         pass
                 
-                # Eğer buluttan veri çekilemediyse örnek test talebi göster
+                # Session state'deki yerel talepleri de birleştir
+                if "yerel_talepler" in st.session_state:
+                    for t in st.session_state["yerel_talepler"]:
+                        if t not in birim_talepleri:
+                            birim_talepleri.append(t)
+                
                 if not birim_talepleri:
                     birim_talepleri = [
                         {
@@ -234,7 +251,9 @@ with tab2:
                             "telefon_no": "0555 123 45 67",
                             "olusturma_tarihi": "2026-11-03 12:40:00",
                             "gps_konum": "Otomatik GPS (Enlem: 37.935, Boylam: 27.812)",
-                            "aciklama": "Yol bozuk adamım"
+                            "aciklama": "Yol bozuk adamım",
+                            "fotograf_adi": "Fotoğraf Yok",
+                            "fotograf_b64": ""
                         }
                     ]
                 
@@ -244,10 +263,21 @@ with tab2:
                         with col1:
                             st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
                             st.markdown(f"**Telefon:** {talep['telefon_no']}")
-                            st.markdown(f"**Oluşturulma Tarihi:** {talep['olusturma_tarihi']}")
+                            st.markdown(f"**Oluşturulma Tarihi:** {talep.get('olusturma_tarihi', 'Bilinmiyor')}")
                             st.markdown(f"**Konum:** {talep['gps_konum']}")
-                        with col2:
                             st.markdown(f"**Açıklama:** {talep['aciklama']}")
+                        with col2:
+                            # Fotoğraf gösterimi
+                            foto_b64_data = talep.get('fotograf_b64', '')
+                            if foto_b64_data:
+                                try:
+                                    image_bytes = base64.b64decode(foto_b64_data)
+                                    image = Image.open(io.BytesIO(image_bytes))
+                                    st.image(image, caption=f"Yüklenen Fotoğraf: {talep.get('fotograf_adi', 'Görsel')}", use_container_width=True)
+                                except Exception:
+                                    st.info("📷 Fotoğraf yüklenmiş ancak çözülemedi.")
+                            else:
+                                st.info("📷 Bu talep için fotoğraf yüklenmemiş.")
             else:
                 st.error("Hatalı e-posta adresi veya şifre!")
         else:
