@@ -155,12 +155,12 @@ with tab1:
                 alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
 
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
+                simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 foto_adi = "Fotoğraf Yok"
                 foto_b64 = ""
                 if fotograf is not None:
                     foto_adi = fotograf.name
-                    # Fotoğrafı base64 formatına çevirerek kaydedelim
                     bytes_data = fotograf.getvalue()
                     foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
                 
@@ -178,11 +178,13 @@ with tab1:
                     "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
                     "aciklama": aciklama,
                     "fotograf_adi": foto_adi,
-                    "fotograf_b64": foto_b64, # Görsel verisi
-                    "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
+                    "fotograf_b64": foto_b64,
+                    "olusturma_tarihi": simdiki_zaman,
+                    "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
+                    "atanan_personel": "Atanmadı",
+                    "yonetici_notu": "Henüz not eklenmedi"
                 }
                 
-                # Session state içinde de saklayalım ki test modunda anında panelde görünsün
                 if "yerel_talepler" not in st.session_state:
                     st.session_state["yerel_talepler"] = []
                 st.session_state["yerel_talepler"].insert(0, yeni_kayit_veri)
@@ -200,8 +202,8 @@ with tab2:
     st.header("Belediye Personel / Müdür Girişi")
     st.info("💡 Test için: `fenisleri@belediye.bel.tr` / Şifre: `12345`")
     
-    eposta_giris = st.text_input("Personel E-Posta Adresi")
-    sifre_giris = st.text_input("Şifre", type="password")
+    eposta_giris = st.text_input("Personel E-Posta Adresi", key=" personel_eposta")
+    sifre_giris = st.text_input("Şifre", type="password", key="personel_sifre")
     
     if st.button("Güvenli Giriş Yap"):
         if eposta_giris:
@@ -225,7 +227,7 @@ with tab2:
                 personel = personel_listesi[0]
                 st.success(f"Hoş geldiniz, {personel['ad_soyad']} ({personel['unvan']} - {personel['sorumlu_birim']})")
                 
-                st.subheader(f"📋 {personel['sorumlu_birim']} - Gelen Talepler")
+                st.subheader(f"📋 {personel['sorumlu_birim']} - Gelen Talepler ve Operasyon Paneli")
                 
                 birim_talepleri = []
                 if supabase is not None:
@@ -235,10 +237,9 @@ with tab2:
                     except Exception:
                         pass
                 
-                # Session state'deki yerel talepleri de birleştir
                 if "yerel_talepler" in st.session_state:
                     for t in st.session_state["yerel_talepler"]:
-                        if t not in birim_talepleri:
+                        if not any(item['talep_id'] == t['talep_id'] for item in birim_talepleri):
                             birim_talepleri.append(t)
                 
                 if not birim_talepleri:
@@ -253,11 +254,13 @@ with tab2:
                             "gps_konum": "Otomatik GPS (Enlem: 37.935, Boylam: 27.812)",
                             "aciklama": "Yol bozuk adamım",
                             "fotograf_adi": "Fotoğraf Yok",
-                            "fotograf_b64": ""
+                            "fotograf_b64": "",
+                            "atanan_personel": "Atanmadı",
+                            "yonetici_notu": "Henüz not eklenmedi"
                         }
                     ]
                 
-                for talep in birim_talepleri:
+                for idx, talep in enumerate(birim_talepleri):
                     with st.expander(f"📌 {talep['talep_id']} - {talep['alt_kategori']} ({talep['durum']})"):
                         col1, col2 = st.columns(2)
                         with col1:
@@ -265,9 +268,10 @@ with tab2:
                             st.markdown(f"**Telefon:** {talep['telefon_no']}")
                             st.markdown(f"**Oluşturulma Tarihi:** {talep.get('olusturma_tarihi', 'Bilinmiyor')}")
                             st.markdown(f"**Konum:** {talep['gps_konum']}")
+                            st.markdown(f"**Mevcut Durum:** {talep.get('durum', 'Yeni')}")
+                            st.markdown(f"**Atanan Personel:** {talep.get('atanan_personel', 'Atanmadı')}")
                             st.markdown(f"**Açıklama:** {talep['aciklama']}")
                         with col2:
-                            # Fotoğraf gösterimi
                             foto_b64_data = talep.get('fotograf_b64', '')
                             if foto_b64_data:
                                 try:
@@ -278,6 +282,33 @@ with tab2:
                                     st.info("📷 Fotoğraf yüklenmiş ancak çözülemedi.")
                             else:
                                 st.info("📷 Bu talep için fotoğraf yüklenmemiş.")
+                        
+                        st.markdown("---")
+                        st.markdown("⚙️ **Yönetici İşlemleri ve Atama Paneli**")
+                        
+                        yeni_durum = st.selectbox(
+                            "Talep Durumunu Güncelle",
+                            ["Yeni (GPS Sınır İçi Doğrulandı)", "İnceleniyor", "Saha Ekibine Sevk Edildi", "Çözüldü - Kapatıldı"],
+                            key=f"durum_{talep['talep_id']}_{idx}"
+                        )
+                        
+                        atanacak_kisi = st.selectbox(
+                            "Saha Personeli / Usta Ata",
+                            ["Atanmadı", "Mehmet Usta (Fen İşleri Ekip 1)", "Ali Usta (Yol Bakım Ekibi)", "Hüseyin Kaya (Yama Ekip Şefi)"],
+                            key=f"personel_{talep['talep_id']}_{idx}"
+                        )
+                        
+                        yonetici_notu_input = st.text_area(
+                            "Yönetçi / Müdür Notu Ekle",
+                            value=talep.get('yonetici_notu', ''),
+                            key=f"not_{talep['talep_id']}_{idx}"
+                        )
+                        
+                        if st.button(f"💾 Güncellemeyi Kaydet ({talep['talep_id']})", key=f"kaydet_{talep['talep_id']}_{idx}"):
+                            birim_talepleri[idx]['durum'] = yeni_durum
+                            birim_talepleri[idx]['atanan_personel'] = atanacak_kisi
+                            birim_talepleri[idx]['yonetici_notu'] = yonetici_notu_input
+                            st.success(f"✅ {talep['talep_id']} numaralı talep başarıyla güncellendi ve ilgili personele iletildi!")
             else:
                 st.error("Hatalı e-posta adresi veya şifre!")
         else:
