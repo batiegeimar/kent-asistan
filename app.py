@@ -7,22 +7,31 @@ from datetime import datetime
 from shapely.geometry import Point, shape
 from supabase import create_client, Client
 from streamlit_geolocation import streamlit_geolocation
+import requests
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
 
-# Supabase Bağlantı Kurulumu (Paylaştığın bilgilerle doğrudan yapılandırıldı)
+SUPABASE_URL = "https://ziubmjjnvcxfedeyvxm.supabase.co"
+SUPABASE_KEY = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
+
+# Supabase Bağlantı ve Ağ Testi Kurulumu
 @st.cache_resource
 def init_supabase():
-    url = "https://ziubmjjnvcxfedeyvxm.supabase.co"
-    key = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
+    # Önce HTTP üzerinden temel erişim testi yapalım (DNS ve ağ kontrolü)
     try:
-        return create_client(url, key)
-    except Exception as e:
-        st.error(f"⚠️ Supabase Bağlantı Hatası Detayı: {e}")
-        return None
+        response = requests.get(f"{SUPABASE_URL}/rest/v1/", headers={"apikey": SUPABASE_KEY}, timeout=5)
+        # 200 veya 401/404 dönmesi sunucuya ulaşıldığını gösterir
+    except Exception as net_err:
+        return None, f"Ağ/DNS Erişim Hatası: {net_err}"
 
-supabase = init_supabase()
+    try:
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        return client, None
+    except Exception as e:
+        return None, f"Client Oluşturma Hatası: {e}"
+
+supabase, baglanti_hatasi = init_supabase()
 
 # Kategori ve Birim Matrisi
 tum_veriler = [
@@ -67,7 +76,7 @@ def ilce_sinirini_yukle():
 
 yenipazar_poligonu = ilce_sinirini_yukle()
 
-# Sidebar CBS Durumu
+# Sidebar CBS ve Veritabanı Durumu
 if yenipazar_poligonu is not None:
     st.sidebar.success("🟢 CBS Altyapı: Yenipazar Sınırı Aktif")
 else:
@@ -76,7 +85,7 @@ else:
 if supabase is not None:
     st.sidebar.success("🟢 Supabase: Bulut Veritabanı Aktif")
 else:
-    st.sidebar.warning("🟡 Supabase: Bağlantı Kurulamadı")
+    st.sidebar.error(f"🔴 Supabase Bağlantı Hatası:\n{baglanti_hatasi}")
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi sınırları içerisindeki altyapı, yol ve çevre taleplerinizi buradan iletebilirsiniz.")
@@ -110,7 +119,6 @@ with tab1:
     st.subheader("📍 Konum İzni ve Otomatik GPS Doğrulama")
     st.info("Sistem, talebinizin ilçe sınırları içerisinde çözülebilmesi için cihazınızın güncel GPS konumuna ihtiyaç duyar.")
     
-    # Canlı HTML5 / Tarayıcı GPS Konumu Alma Bileşeni
     location = streamlit_geolocation()
 
     konum_izni = st.radio(
@@ -128,34 +136,30 @@ with tab1:
     
     if gonder_btn:
         if not ad_soyad or not telefon or not aciklama:
-            st.error("Lütfen zorunlu alanları (*) doldurunuz.")
+            st.error("❌ Lütfen zorunlu alanları (*) doldurunuz.")
         elif secilen_ilce != "Yenipazar":
             st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
         elif "İzin vermiyorum" in konum_izni:
-            st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır. Altyapı bildirimleri için GPS konumu zorunludur.")
+            st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır.")
         elif location is None or location.get('latitude') is None or location.get('longitude') is None:
-            st.error("❌ **Hata:** GPS konum veriniz alınamadı. Lütfen cihazınızdan/tarayıcınızdan konum erişimine izin verdiğinizden ve GPS butonuna tıkladığınızdan emin olun.")
+            st.error("❌ **Hata:** GPS konum veriniz alınamadı. Lütfen cihazınızdan/tarayıcınızdan konum izni verdiğinizden emin olun.")
         else:
-            # GPS'ten alınan koordinatlar
             enlem = location.get('latitude')
             boylam = location.get('longitude')
             
             sinir_icinde_mi = True
             if yenipazar_poligonu is not None:
-                # Shapely kütüphanesi önce boylam, sonra enlem (longitude, latitude) bekler
                 vatandas_noktasi = Point(boylam, enlem)
                 sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
             
             if not sinir_icinde_mi:
                 st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
             else:
-                # Sınır içindeyse kategori eşleştirmelerini yap ve veritabanına kaydet
                 eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
                 sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Belediye"
                 alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
 
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
-                simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 foto_adi = "Fotoğraf Yok"
                 if fotograf is not None:
@@ -178,16 +182,15 @@ with tab1:
                     "durum": "Yeni (GPS Sınır İçi Doğrulandı)"
                 }
                 
-                # Supabase veritabanına kayıt ekleme
                 if supabase is not None:
                     try:
                         supabase.table("talepler").insert(yeni_kayit_veri).execute()
                         st.success(f"Talebiniz Supabase veritabanına başarıyla kaydedildi! Takip Numaranız: **{talep_id}**")
                         st.balloons()
                     except Exception as e:
-                        st.error(f"Veritabanı kayıt hatası: {e}")
+                        st.error(f"Veritabanı kayıt hatası detayı: {e}")
                 else:
-                    st.error("Supabase bağlantısı kurulamadı!")
+                    st.error("Supabase bağlantısı aktif değil!")
 
 with tab2:
     st.header("Belediye Personel / Müdür Girişi")
@@ -198,7 +201,6 @@ with tab2:
     
     if st.button("Güvenli Giriş Yap"):
         if supabase is not None and eposta_giris:
-            # Supabase personeller tablosundan yetki kontrolü
             response = supabase.table("personeller").select("*").eq("eposta_adresi", eposta_giris.strip().lower()).eq("sifre", sifre_giris).execute()
             personel_listesi = response.data
             
@@ -208,7 +210,6 @@ with tab2:
                 
                 st.subheader(f"📋 {personel['sorumlu_birim']} - Gelen Talepler (Supabase Canlı Veri)")
                 
-                # Sadece ilgili birimin taleplerini çekelim (RBAC - Rol Tabanlı Filtreleme)
                 talep_response = supabase.table("talepler").select("*").eq("alt_bolum", personel['sorumlu_birim']).order("olusturma_tarihi", desc=True).execute()
                 birim_talepleri = talep_response.data
                 
