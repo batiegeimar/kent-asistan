@@ -32,7 +32,7 @@ if "kurumlar" not in st.session_state:
         {"kurum_adi": "Enerya Doğalgaz", "alt_bolum": "Doğalgaz Acil Servis"}
     ]
 
-# Personel / Kurum Yöneticileri Listesi (Telefon Numarası Tabanlı)
+# Personel / Kurum Yöneticileri Listesi
 if "personeller" not in st.session_state:
     st.session_state["personeller"] = [
         {"ad_soyad": "Sistem Süper Admin", "telefon_no": "05550000000", "sifre": "admin123", "unvan": "Süper Admin", "sorumlu_birim": "Tüm Sistem"},
@@ -49,7 +49,7 @@ if "yerel_talepler" not in st.session_state:
             "alt_kategori": "Yol Bozukluğu ile İlgili Talepler (Çukur vb.)",
             "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
             "ad_soyad": "Test Vatandaş",
-            "telefon_no": "0555 123 45 67",
+            "telefon_no": "05551234567",
             "olusturma_tarihi": "2026-11-03 12:40:00",
             "gps_konum": "Otomatik GPS (Enlem: 37.935, Boylam: 27.812)",
             "enlem": 37.935,
@@ -57,6 +57,8 @@ if "yerel_talepler" not in st.session_state:
             "aciklama": "Yol bozuk acil bakım gerekiyor.",
             "fotograf_adi": "Fotoğraf Yok",
             "fotograf_b64": "",
+            "saha_fotograf_adi": "Yüklenmedi",
+            "saha_fotograf_b64": "",
             "atanan_personel": "Ahmet Yılmaz",
             "yönetici_notu": "Fen işleri ekibi yönlendirildi."
         }
@@ -147,7 +149,7 @@ with tab1:
     
     tc_kimlik = st.text_input("TC Kimlik Numarası (Opsiyonel)", key="vat_tc")
     ad_soyad = st.text_input("Ad Soyad *", key="vat_ad")
-    telefon = st.text_input("Telefon Numarası *", key="vat_tel")
+    telefon = st.text_input("Telefon Numarası (Örn: 0555...) *", key="vat_tel")
     
     secilen_ana_kategori = st.selectbox("Ana Kategori", options=ana_kategoriler, key="ana_kat_secim")
     
@@ -215,7 +217,7 @@ with tab1:
                     "talep_id": talep_id,
                     "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
                     "ad_soyad": ad_soyad,
-                    "telefon_no": telefon,
+                    "telefon_no": telefon.strip(),
                     "il": secilen_il,
                     "ilce": secilen_ilce,
                     "ana_kategori": secilen_ana_kategori,
@@ -228,6 +230,8 @@ with tab1:
                     "aciklama": aciklama,
                     "fotograf_adi": foto_adi,
                     "fotograf_b64": foto_b64,
+                    "saha_fotograf_adi": "Yüklenmedi",
+                    "saha_fotograf_b64": "",
                     "olusturma_tarihi": simdiki_zaman,
                     "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
                     "atanan_personel": "Atanmadı",
@@ -279,7 +283,7 @@ with tab2:
             st.markdown("---")
             st.subheader("👑 Süper Admin / Sistem Yönetim Paneli")
             
-            admin_secim = st.radio("Yönetim İşlemi Seçin:", ["Kurum / Birim Listesi ve Ekle", "Kurum Yöneticisi / Personel Ekle"])
+            admin_secim = st.radio("Yönetim İşlemi Seçin:", ["Kurum / Birim Listesi ve Ekle", "Kurum Yöneticisi / Personel Ekle"], key="admin_radio_secim")
             
             if admin_secim == "Kurum / Birim Listesi ve Ekle":
                 st.markdown("#### 🏢 Mevcut Kurum ve Altyapı Birimleri")
@@ -287,9 +291,9 @@ with tab2:
                     st.write(f"- **{k['kurum_adi']}** / {k['alt_bolum']}")
                 
                 st.markdown("#### ➕ Yeni Kurum / Birim Tanımla")
-                yeni_kurum_adi = st.text_input("Kurum Adı (Örn: Enerya Doğalgaz)")
-                yeni_birim_adi = st.text_input("Alt Birim / Müdürlük Adı (Örn: Doğalgaz Acil Servis)")
-                if st.button("Kurumu Sisteme Ekle"):
+                yeni_kurum_adi = st.text_input("Kurum Adı (Örn: Enerya Doğalgaz)", key="yeni_kurum_input")
+                yeni_birim_adi = st.text_input("Alt Birim / Müdürlük Adı (Örn: Doğalgaz Acil Servis)", key="yeni_birim_input")
+                if st.button("Kurumu Sisteme Ekle", key="kurum_ekle_btn"):
                     if yeni_kurum_adi and yeni_birim_adi:
                         st.session_state["kurumlar"].append({"kurum_adi": yeni_kurum_adi, "alt_bolum": yeni_birim_adi})
                         st.success(f"✅ {yeni_kurum_adi} - {yeni_birim_adi} başarıyla sisteme eklendi!")
@@ -303,15 +307,15 @@ with tab2:
                     st.write(f"- **{pers['ad_soyad']}** ({pers['telefon_no']}) ➔ {pers['sorumlu_birim']} [{pers['unvan']}]")
                 
                 st.markdown("#### ➕ Yeni Kurum Yöneticisi / Personel Tanımla")
-                p_ad = st.text_input("Ad Soyad")
-                p_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)")
-                p_sifre = st.text_input("Şifre", type="password")
-                p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Müdür", "Saha Ekip Şefi"])
+                p_ad = st.text_input("Ad Soyad", key="p_ad_input")
+                p_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)", key="p_tel_input")
+                p_sifre = st.text_input("Şifre", type="password", key="p_sifre_input")
+                p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Müdür", "Saha Ekip Şefi"], key="p_unvan_select")
                 
                 birim_secenekleri = [k["alt_bolum"] for k in st.session_state["kurumlar"]]
-                p_birim = st.selectbox("Sorumlu Olduğu Birim / Kurum", birim_secenekleri)
+                p_birim = st.selectbox("Sorumlu Olduğu Birim / Kurum", birim_secenekleri, key="p_birim_select")
                 
-                if st.button("Yönetici Hesabı Oluştur"):
+                if st.button("Yönetici Hesabı Oluştur", key="yonetici_olustur_btn"):
                     if p_ad and p_tel and p_sifre:
                         st.session_state["personeller"].append({
                             "ad_soyad": p_ad,
@@ -359,27 +363,49 @@ with tab2:
                         maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                         st.markdown(f"🗺️ **[Google Haritalar'da Aç ve Rota Oluştur]({maps_url})**", unsafe_allow_html=True)
                     
-                    # 💬 WhatsApp Bildirim
+                    # 💬 Saha Personeline WhatsApp Görev Bildirimi
                     if talep.get('atanan_personel') != "Atanmadı":
                         wa_mesaj = f"🔔 *Yeni Saha Görevi ({talep['talep_id']})*\n*Kurum:* {talep.get('sorumlu_kurum','')}\n*Kategori:* {talep['alt_kategori']}\n*Açıklama:* {talep['aciklama']}\n*Not:* {talep.get('yönetici_notu','')}\n*Konum:* https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                         encoded_msg = urllib.parse.quote(wa_mesaj)
                         wa_url = f"https://wa.me/?text={encoded_msg}"
                         st.markdown(f"💬 **[WhatsApp ile Saha Personeline Gönder]({wa_url})**", unsafe_allow_html=True)
 
+                    # 📱 Çözüldüğünde Vatandaşa WhatsApp Bildirim Butonu
+                    if talep.get('durum') == "Çözüldü - Kapatıldı":
+                        vatandas_tel = talep.get('telefon_no', '').strip()
+                        vat_mesaj = f"Sayın {talep['ad_soyad']}, {talep['talep_id']} numaralı '{talep['alt_kategori']}' başlıklı talebiniz Yenipazar Belediyesi / Paydaş Kurumlar tarafından başarıyla çözümlenmiştir. Sağlıklı günler dileriz."
+                        encoded_vat_msg = urllib.parse.quote(vat_mesaj)
+                        vat_wa_url = f"https://wa.me/{vatandas_tel}?text={encoded_vat_msg}"
+                        st.markdown(f"✅ **[Vatandaşa WhatsApp ile Bilgi Ver]({vat_wa_url})**", unsafe_allow_html=True)
+
                 with col2:
+                    st.markdown("📷 **Vatandaş Hasar Fotoğrafı:**")
                     foto_b64_data = talep.get('fotograf_b64', '')
                     if foto_b64_data:
                         try:
                             image_bytes = base64.b64decode(foto_b64_data)
                             image = Image.open(io.BytesIO(image_bytes))
-                            st.image(image, caption=f"Yüklenen Fotoğraf: {talep.get('fotograf_adi', 'Görsel')}", use_container_width=True)
+                            st.image(image, caption=f"Vatandaş Görseli: {talep.get('fotograf_adi', 'Görsel')}", use_container_width=True)
                         except Exception:
-                            st.info("📷 Fotoğraf yüklenmiş ancak çözülemedi.")
+                            st.info("📷 Fotoğraf çözülemedi.")
                     else:
-                        st.info("📷 Bu talep için fotoğraf yüklenmemiş.")
+                        st.info("📷 Vatandaş fotoğraf yüklememiş.")
+
+                    st.markdown("---")
+                    st.markdown("🛠️ **Saha Çözüm / Bitiş Fotoğrafı:**")
+                    saha_foto_b64 = talep.get('saha_fotograf_b64', '')
+                    if saha_foto_b64:
+                        try:
+                            s_image_bytes = base64.b64decode(saha_foto_b64)
+                            s_image = Image.open(io.BytesIO(s_image_bytes))
+                            st.image(s_image, caption=f"Saha Çözüm Görseli: {talep.get('saha_fotograf_adi', 'Çözüm')}", use_container_width=True)
+                        except Exception:
+                            st.info("Saha fotoğrafı yüklenmiş.")
+                    else:
+                        st.info("Saha bitiş fotoğrafı henüz yüklenmedi.")
                 
                 st.markdown("---")
-                st.markdown("⚙️ **Yönetici İşlemleri ve Atama Paneli**")
+                st.markdown("⚙️ **Yönetici İşlemleri, Saha Fotoğrafı ve Durum Güncelleme**")
                 
                 durumlar = ["Yeni (GPS Sınır İçi Doğrulandı)", "İnceleniyor", "Saha Ekibine Sevk Edildi", "Çözüldü - Kapatıldı"]
                 mevcut_durum = talep.get('durum', durumlar[0])
@@ -409,15 +435,31 @@ with tab2:
                         value=talep.get('yönetici_notu', ''),
                         key=f"not_input_{talep['talep_id']}_{idx}"
                     )
+
+                    saha_fotograf_yukleme = st.file_uploader(
+                        "Sahadan Çözüm/Bitiş Fotoğrafı Yükle (Opsiyonel)", 
+                        type=["jpg", "jpeg", "png"], 
+                        key=f"saha_foto_up_{talep['talep_id']}_{idx}"
+                    )
                     
-                    kaydet_buton = st.form_submit_button(f"💾 Güncellemeyi Kaydet ({talep['talep_id']})")
+                    kaydet_buton = st.form_submit_button(f"💾 Güncellemeyi ve Saha Fotoğrafını Kaydet ({talep['talep_id']})")
                     
                     if kaydet_buton:
+                        s_foto_adi = talep.get('saha_fotograf_adi', 'Yüklenmedi')
+                        s_foto_b64 = talep.get('saha_fotograf_b64', '')
+
+                        if saha_fotograf_yukleme is not None:
+                            s_foto_adi = saha_fotograf_yukleme.name
+                            s_bytes = saha_fotograf_yukleme.getvalue()
+                            s_foto_b64 = base64.b64encode(s_bytes).decode("utf-8")
+
                         for og in st.session_state["yerel_talepler"]:
                             if og["talep_id"] == talep["talep_id"]:
                                 og['durum'] = yeni_durum
                                 og['atanan_personel'] = atanacak_kisi
                                 og['yönetici_notu'] = yonetici_notu_input
+                                og['saha_fotograf_adi'] = s_foto_adi
+                                og['saha_fotograf_b64'] = s_foto_b64
                                 break
-                        st.success(f"✅ {talep['talep_id']} numaralı talep güncellendi!")
+                        st.success(f"✅ {talep['talep_id']} numaralı talep güncellendi ve saha fotoğrafı işlendi!")
                         st.rerun()
