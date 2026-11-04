@@ -32,7 +32,7 @@ if "kurumlar" not in st.session_state:
         {"kurum_adi": "Enerya Doğalgaz", "alt_bolum": "Doğalgaz Acil Servis"}
     ]
 
-# Personel / Kurum Yöneticileri Listesi
+# Personel / Kurum Yöneticileri Listesi (Telefon Numarası Tabanlı)
 if "personeller" not in st.session_state:
     st.session_state["personeller"] = [
         {"ad_soyad": "Sistem Süper Admin", "telefon_no": "05550000000", "sifre": "admin123", "unvan": "Süper Admin", "sorumlu_birim": "Tüm Sistem"},
@@ -283,9 +283,38 @@ with tab2:
             st.markdown("---")
             st.subheader("👑 Süper Admin / Sistem Yönetim Paneli")
             
-            admin_secim = st.radio("Yönetim İşlemi Seçin:", ["Kurum / Birim Listesi ve Ekle", "Kurum Yöneticisi / Personel Ekle"], key="admin_radio_secim")
+            admin_secim = st.radio(
+                "Yönetim İşlemi Seçin:", 
+                [
+                    "📊 Sistem Kurum ve Yetkili Matrisi (Genel Liste)", 
+                    "🏢 Kurum / Birim Ekle", 
+                    "👥 Kurum Yöneticisi / Personel Ekle"
+                ], 
+                key="admin_radio_secim"
+            )
             
-            if admin_secim == "Kurum / Birim Listesi ve Ekle":
+            # 1. ÖZET MATRİS LİSTESİ
+            if admin_secim == "📊 Sistem Kurum ve Yetkili Matrisi (Genel Liste)":
+                st.markdown("#### 🌐 Sistemdeki Tüm Kurumlar, Birimler ve Sorumlu Yöneticiler")
+                st.info("Bu ekranda hangi kurumda hangi birimin yer aldığı ve bu birimi kimin yönettiği listelenmektedir.")
+                
+                for k_idx, kurum in enumerate(st.session_state["kurumlar"]):
+                    kurum_adi = kurum["kurum_adi"]
+                    birim_adi = kurum["alt_bolum"]
+                    
+                    # Bu birime atanmış yetkilileri bul
+                    ilgili_yetkililer = [p for p in st.session_state["personeller"] if p["sorumlu_birim"] == birim_adi and p["unvan"] != "Süper Admin"]
+                    
+                    with st.expander(f"🏛️ {kurum_adi} ➔ {birim_adi}"):
+                        if ilgili_yetkililer:
+                            st.markdown("**Atanmış Yöneticiler / Personeller:**")
+                            for y in ilgili_yetkililer:
+                                st.write(f"- 👤 **{y['ad_soyad']}** | Tel: `{y['telefon_no']}` | Unvan: *{y['unvan']}*")
+                        else:
+                            st.warning("⚠️ Bu birime henüz aktif bir yönetici/personel atanmamış.")
+
+            # 2. KURUM EKLEME
+            elif admin_secim == "🏢 Kurum / Birim Ekle":
                 st.markdown("#### 🏢 Mevcut Kurum ve Altyapı Birimleri")
                 for k in st.session_state["kurumlar"]:
                     st.write(f"- **{k['kurum_adi']}** / {k['alt_bolum']}")
@@ -301,8 +330,9 @@ with tab2:
                     else:
                         st.error("Lütfen tüm alanları doldurun.")
             
-            elif admin_secim == "Kurum Yöneticisi / Personel Ekle":
-                st.markdown("#### 👥 Kayıtlı Kurum Yöneticileri")
+            # 3. PERSONEL / YÖNETİCİ EKLEME
+            elif admin_secim == "👥 Kurum Yöneticisi / Personel Ekle":
+                st.markdown("#### 👥 Kayıtlı Kurum Yöneticileri ve Personeller")
                 for pers in st.session_state["personeller"]:
                     st.write(f"- **{pers['ad_soyad']}** ({pers['telefon_no']}) ➔ {pers['sorumlu_birim']} [{pers['unvan']}]")
                 
