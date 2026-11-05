@@ -25,8 +25,8 @@ try:
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 except Exception:
     # Yerel testler için yedek (fallback) tanımlama
-    SUPABASE_URL = "https://ziubmjjnvcxfedeyvxm.supabase.co"
-    SUPABASE_KEY = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
+    SUPABASE_URL = "https://ziubmjjnvcxefodeyvxm.supabase.co/rest/v1/"
+    SUPABASE_KEY = "sb_publishable_iFUTiJplbyvS-LC-SzwG4g_rgfMbGXi"
 
 @st.cache_resource
 def init_supabase():
