@@ -7,6 +7,7 @@ import base64
 import urllib.parse
 from datetime import datetime
 from shapely.geometry import Point, shape
+# ❌ SİLİNECEK SATIR (10. satır):
 from supabase import create_client, Client
 from streamlit_geolocation import streamlit_geolocation
 
@@ -19,22 +20,13 @@ if "personel_giris" not in st.session_state:
 if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
-# SUPABASE BAĞLANTI BİLGİLERİ (Güvenli Secrets Entegrasyonu)
+# --- POSTGRESQL VERİTABANI BAĞLANTISI (DNS hatasını çözen yöntem) ---
 try:
-    SUPABASE_URL = st.secrets["SUPABASE_URL"]
-    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-except Exception:
-    # Yerel testler için yedek (fallback) tanımlama
-    SUPABASE_URL = "https://ziubmjjnvcxefodeyvxm.supabase.co/rest/v1/"
-    SUPABASE_KEY = "sb_publishable_iFUTiJplbyvS-LC-SzwG4g_rgfMbGXi"
-
-@st.cache_resource
-def init_supabase():
-    try:
-        client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        return client, None
-    except Exception as e:
-        return None, str(e)
+    conn = st.connection("postgresql", type="sql")
+    baglanti_hatasi = None
+except Exception as e:
+    conn = None
+    baglanti_hatasi = str(e)
 
 supabase, baglanti_hatasi = init_supabase()
 
