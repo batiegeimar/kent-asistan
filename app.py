@@ -20,50 +20,6 @@ if "personel_giris" not in st.session_state:
 if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
-# Kurumlar Listesi
-if "kurumlar" not in st.session_state:
-    st.session_state["kurumlar"] = [
-        {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Fen İşleri Müdürlüğü"},
-        {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Zabıta / Çevre Koruma"},
-        {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Temizlik İşleri Müdürlüğü"},
-        {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Park ve Bahçeler Müdürlüğü"},
-        {"kurum_adi": "Aydın Su ve Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
-        {"kurum_adi": "Aydem Elektrik", "alt_bolum": "Elektrik Dağıtım Birimi"},
-        {"kurum_adi": "Enerya Doğalgaz", "alt_bolum": "Doğalgaz Acil Servis"}
-    ]
-
-# Personel / Kurum Yöneticileri Listesi (Telefon Numarası Tabanlı)
-if "personeller" not in st.session_state:
-    st.session_state["personeller"] = [
-        {"ad_soyad": "Sistem Süper Admin", "telefon_no": "05550000000", "sifre": "admin123", "unvan": "Süper Admin", "sorumlu_birim": "Tüm Sistem"},
-        {"ad_soyad": "Ahmet Yılmaz", "telefon_no": "05551111111", "sifre": "12345", "unvan": "Müdür", "sorumlu_birim": "Fen İşleri Müdürlüğü"},
-        {"ad_soyad": "Mehmet Su", "telefon_no": "05552222222", "sifre": "12345", "unvan": "Kurum Yetkilisi", "sorumlu_birim": "Su ve Kanalizasyon Müdürlüğü"},
-        {"ad_soyad": "Can Elektrikçi", "telefon_no": "05553333333", "sifre": "12345", "unvan": "Kurum Yetkilisi", "sorumlu_birim": "Elektrik Dağıtım Birimi"},
-        {"ad_soyad": "Gazci Celal", "telefon_no": "05554444444", "sifre": "12345", "unvan": "Kurum Yetkilisi", "sorumlu_birim": "Doğalgaz Acil Servis"}
-    ]
-
-if "yerel_talepler" not in st.session_state:
-    st.session_state["yerel_talepler"] = [
-        {
-            "talep_id": "KENT-48070",
-            "alt_kategori": "Yol Bozukluğu ile İlgili Talepler (Çukur vb.)",
-            "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
-            "ad_soyad": "Test Vatandaş",
-            "telefon_no": "05551234567",
-            "olusturma_tarihi": "2026-11-03 12:40:00",
-            "gps_konum": "Otomatik GPS (Enlem: 37.935, Boylam: 27.812)",
-            "enlem": 37.935,
-            "boylam": 27.812,
-            "aciklama": "Yol bozuk acil bakım gerekiyor.",
-            "fotograf_adi": "Fotoğraf Yok",
-            "fotograf_b64": "",
-            "saha_fotograf_adi": "Yüklenmedi",
-            "saha_fotograf_b64": "",
-            "atanan_personel": "Ahmet Yılmaz",
-            "yönetici_notu": "Fen işleri ekibi yönlendirildi."
-        }
-    ]
-
 SUPABASE_URL = "https://ziubmjjnvcxfedeyvxm.supabase.co"
 SUPABASE_KEY = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
 
@@ -77,6 +33,17 @@ def init_supabase():
         return None, str(e)
 
 supabase, baglanti_hatasi = init_supabase()
+
+# Kurumlar Listesi
+kurumlar_listesi = [
+    {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Fen İşleri Müdürlüğü"},
+    {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Zabıta / Çevre Koruma"},
+    {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Temizlik İşleri Müdürlüğü"},
+    {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Park ve Bahçeler Müdürlüğü"},
+    {"kurum_adi": "Aydın Su ve Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
+    {"kurum_adi": "Aydem Elektrik", "alt_bolum": "Elektrik Dağıtım Birimi"},
+    {"kurum_adi": "Enerya Doğalgaz", "alt_bolum": "Doğalgaz Acil Servis"}
+]
 
 # Kategori ve Kurum Eşleştirme Matrisi
 tum_veriler = [
@@ -128,7 +95,7 @@ else:
 if supabase is not None:
     st.sidebar.success("🟢 Supabase: Bulut Veritabanı Aktif")
 else:
-    st.sidebar.warning("🟡 Supabase: Yerel Test Modu Aktif")
+    st.sidebar.error("🔴 Supabase Bağlantı Hatası!")
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi ve Paydaş Kurumlar Ortak Çözüm Masası")
@@ -238,35 +205,44 @@ with tab1:
                     "yönetici_notu": "Henüz not eklenmedi"
                 }
                 
-                st.session_state["yerel_talepler"].insert(0, yeni_kayit_veri)
-                st.success(f"Talebiniz başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}** | Takip Numaranız: **{talep_id}**")
-                st.balloons()
+                # Supabase'e Kaydet
+                if supabase is not None:
+                    try:
+                        supabase.table("talepler").insert(yeni_kayit_veri).execute()
+                        st.success(f"Talebiniz başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}** | Takip Numaranız: **{talep_id}**")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Veritabanı kayıt hatası: {e}")
+                else:
+                    st.error("Supabase bağlantısı kurulamadı.")
 
 with tab2:
     st.header("Kurum ve Personel Giriş Paneli")
-    st.info("💡 **Test Hesapları (Telefon Numarası ile):**\n- Süper Admin: `05550000000` / Şifre: `admin123`\n- Fen İşleri: `05551111111` / Şifre: `12345`\n- ASKİ (Su): `05552222222` / Şifre: `12345`\n- Aydem (Elektrik): `05553333333` / Şifre: `12345`\n- Enerya (Doğalgaz): `05554444444` / Şifre: `12345`")
+    st.info("💡 **Giriş Bilgisi:** Supabase `personeller` tablosundaki kayıtlı telefon numaranız (`0555...`) ve şifrenizle giriş yapabilirsiniz.")
 
     if not st.session_state["personel_giris"]:
         tel_giris = st.text_input("Telefon Numarası (Örn: 0555...)", key="personel_tel_input")
         sifre_giris = st.text_input("Şifre", type="password", key="personel_sifre_input")
         
         if st.button("Güvenli Giriş Yap", key="personel_giris_btn"):
-            if tel_giris:
-                eslesen_personel = None
-                clean_tel = tel_giris.strip().replace(" ", "")
-                for p in st.session_state["personeller"]:
-                    if p["telefon_no"].replace(" ", "") == clean_tel and p["sifre"] == sifre_giris:
-                        eslesen_personel = p
-                        break
-                
-                if eslesen_personel:
-                    st.session_state["personel_giris"] = True
-                    st.session_state["giris_yapan_personel"] = eslesen_personel
-                    st.rerun()
-                else:
-                    st.error("Hatalı telefon numarası veya şifre!")
+            if tel_giris and sifre_giris:
+                try:
+                    clean_tel = tel_giris.strip().replace(" ", "")
+                    # Supabase personeller tablosundan telefon numarası ile sorgula
+                    res = supabase.table("personeller").select("*").eq("telefon_no", clean_tel).eq("sifre", sifre_giris).execute()
+                    personeller_listesi = res.data
+                    
+                    if personeller_listesi and len(personeller_listesi) > 0:
+                        eslesen_personel = personeller_listesi[0]
+                        st.session_state["personel_giris"] = True
+                        st.session_state["giris_yapan_personel"] = eslesen_personel
+                        st.rerun()
+                    else:
+                        st.error("Hatalı telefon numarası veya şifre!")
+                except Exception as e:
+                    st.error(f"Giriş sorgulama hatası: {e}")
             else:
-                st.warning("Lütfen telefon numaranızı giriniz.")
+                st.warning("Lütfen telefon numaranızı ve şifrenizi giriniz.")
 
     # Oturum Açıldığında
     if st.session_state["personel_giris"]:
@@ -278,16 +254,18 @@ with tab2:
             st.session_state["giris_yapan_personel"] = None
             st.rerun()
 
+        # Süper Admin Kontrolü
+        is_super_admin = (personel.get("unvan") == "Süper Admin" or personel.get("telefon_no") == "05550000000")
+
         # --- SÜPER ADMIN ÖZEL YÖNETİM ALANI ---
-        if personel["unvan"] == "Süper Admin":
+        if personel.get("unvan") in ["Süper Admin", "Fen İşleri Müdürü"] or is_super_admin:
             st.markdown("---")
-            st.subheader("👑 Süper Admin / Sistem Yönetim Paneli")
+            st.subheader("👑 Kurum / Personel Yönetim Paneli")
             
             admin_secim = st.radio(
                 "Yönetim İşlemi Seçin:", 
                 [
                     "📊 Sistem Kurum ve Yetkili Matrisi (Genel Liste)", 
-                    "🏢 Kurum / Birim Ekle", 
                     "👥 Kurum Yöneticisi / Personel Ekle"
                 ], 
                 key="admin_radio_secim"
@@ -295,78 +273,71 @@ with tab2:
             
             # 1. ÖZET MATRİS LİSTESİ
             if admin_secim == "📊 Sistem Kurum ve Yetkili Matrisi (Genel Liste)":
-                st.markdown("#### 🌐 Sistemdeki Tüm Kurumlar, Birimler ve Sorumlu Yöneticiler")
-                st.info("Bu ekranda hangi kurumda hangi birimin yer aldığı ve bu birimi kimin yönettiği listelenmektedir.")
-                
-                for k_idx, kurum in enumerate(st.session_state["kurumlar"]):
-                    kurum_adi = kurum["kurum_adi"]
-                    birim_adi = kurum["alt_bolum"]
+                st.markdown("#### 🌐 Supabase Kayıtlı Kurumlar, Birimler ve Yöneticiler")
+                try:
+                    p_res = supabase.table("personeller").select("*").execute()
+                    tum_personeller = p_res.data
                     
-                    # Bu birime atanmış yetkilileri bul
-                    ilgili_yetkililer = [p for p in st.session_state["personeller"] if p["sorumlu_birim"] == birim_adi and p["unvan"] != "Süper Admin"]
-                    
-                    with st.expander(f"🏛️ {kurum_adi} ➔ {birim_adi}"):
-                        if ilgili_yetkililer:
-                            st.markdown("**Atanmış Yöneticiler / Personeller:**")
-                            for y in ilgili_yetkililer:
-                                st.write(f"- 👤 **{y['ad_soyad']}** | Tel: `{y['telefon_no']}` | Unvan: *{y['unvan']}*")
-                        else:
-                            st.warning("⚠️ Bu birime henüz aktif bir yönetici/personel atanmamış.")
+                    for kurum in kurumlar_listesi:
+                        kurum_adi = kurum["kurum_adi"]
+                        birim_adi = kurum["alt_bolum"]
+                        
+                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim") == birim_adi]
+                        
+                        with st.expander(f"🏛️ {kurum_adi} ➔ {birim_adi}"):
+                            if ilgili_yetkililer:
+                                st.markdown("**Atanmış Yöneticiler / Personeller:**")
+                                for y in ilgili_yetkililer:
+                                    st.write(f"- 👤 **{y['ad_soyad']}** | Tel: `{y.get('telefon_no')}` | Unvan: *{y['unvan']}*")
+                            else:
+                                st.warning("⚠️ Bu birime henüz Supabase'de aktif bir yönetici atanmamış.")
+                except Exception as e:
+                    st.error(f"Matris yüklenirken hata: {e}")
 
-            # 2. KURUM EKLEME
-            elif admin_secim == "🏢 Kurum / Birim Ekle":
-                st.markdown("#### 🏢 Mevcut Kurum ve Altyapı Birimleri")
-                for k in st.session_state["kurumlar"]:
-                    st.write(f"- **{k['kurum_adi']}** / {k['alt_bolum']}")
-                
-                st.markdown("#### ➕ Yeni Kurum / Birim Tanımla")
-                yeni_kurum_adi = st.text_input("Kurum Adı (Örn: Enerya Doğalgaz)", key="yeni_kurum_input")
-                yeni_birim_adi = st.text_input("Alt Birim / Müdürlük Adı (Örn: Doğalgaz Acil Servis)", key="yeni_birim_input")
-                if st.button("Kurumu Sisteme Ekle", key="kurum_ekle_btn"):
-                    if yeni_kurum_adi and yeni_birim_adi:
-                        st.session_state["kurumlar"].append({"kurum_adi": yeni_kurum_adi, "alt_bolum": yeni_birim_adi})
-                        st.success(f"✅ {yeni_kurum_adi} - {yeni_birim_adi} başarıyla sisteme eklendi!")
-                        st.rerun()
-                    else:
-                        st.error("Lütfen tüm alanları doldurun.")
-            
-            # 3. PERSONEL / YÖNETİCİ EKLEME
+            # 2. PERSONEL / YÖNETİCİ EKLEME
             elif admin_secim == "👥 Kurum Yöneticisi / Personel Ekle":
-                st.markdown("#### 👥 Kayıtlı Kurum Yöneticileri ve Personeller")
-                for pers in st.session_state["personeller"]:
-                    st.write(f"- **{pers['ad_soyad']}** ({pers['telefon_no']}) ➔ {pers['sorumlu_birim']} [{pers['unvan']}]")
-                
-                st.markdown("#### ➕ Yeni Kurum Yöneticisi / Personel Tanımla")
+                st.markdown("#### ➕ Supabase Veritabanına Yeni Personel Tanımla")
                 p_ad = st.text_input("Ad Soyad", key="p_ad_input")
                 p_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)", key="p_tel_input")
                 p_sifre = st.text_input("Şifre", type="password", key="p_sifre_input")
-                p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Müdür", "Saha Ekip Şefi"], key="p_unvan_select")
+                p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Müdür", "Saha Ekip Şefi", "Su ve Kanalizasyon Amiri", "Park ve Bahçeler Amiri"], key="p_unvan_select")
                 
-                birim_secenekleri = [k["alt_bolum"] for k in st.session_state["kurumlar"]]
+                birim_secenekleri = [k["alt_bolum"] for k in kurumlar_listesi]
                 p_birim = st.selectbox("Sorumlu Olduğu Birim / Kurum", birim_secenekleri, key="p_birim_select")
                 
-                if st.button("Yönetici Hesabı Oluştur", key="yonetici_olustur_btn"):
+                if st.button("Supabase'e Yönetici/Personel Kaydet", key="yonetici_olustur_btn"):
                     if p_ad and p_tel and p_sifre:
-                        st.session_state["personeller"].append({
-                            "ad_soyad": p_ad,
-                            "telefon_no": p_tel.strip(),
-                            "sifre": p_sifre,
-                            "unvan": p_unvan,
-                            "sorumlu_birim": p_birim
-                        })
-                        st.success(f"✅ {p_ad} için {p_tel} nolu hesap başarıyla oluşturuldu!")
-                        st.rerun()
+                        try:
+                            yeni_personel_veri = {
+                                "ad_soyad": p_ad,
+                                "telefon_no": p_tel.strip(),
+                                "sifre": p_sifre,
+                                "unvan": p_unvan,
+                                "sorumlu_birim": p_birim
+                            }
+                            supabase.table("personeller").insert(yeni_personel_veri).execute()
+                            st.success(f"✅ {p_ad} başarıyla Supabase `personeller` tablosuna eklendi!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Kayıt eklenirken hata oluştu: {e}")
                     else:
                         st.error("Lütfen zorunlu alanları doldurun.")
             st.markdown("---")
 
         # --- TALEP YÖNETİMİ VE FİLTRELEME ---
-        if personel["unvan"] == "Süper Admin":
-            st.subheader("📋 Tüm Kurumların Gelen Talepleri (Genel Koordinasyon)")
-            gosterilecek_talepler = st.session_state["yerel_talepler"]
+        st.subheader(f"📋 {personel['sorumlu_birim']} - Gelen Talepler")
+        
+        try:
+            t_res = supabase.table("talepler").select("*").execute()
+            sup_talepler = t_res.data
+        except Exception as e:
+            sup_talepler = []
+            st.error(f"Talepler yüklenirken hata: {e}")
+
+        if personel.get("unvan") == "Süper Admin" or is_super_admin:
+            gosterilecek_talepler = sup_talepler
         else:
-            st.subheader(f"📋 {personel['sorumlu_birim']} - Biriminize Gelen Talepler")
-            gosterilecek_talepler = [t for t in st.session_state["yerel_talepler"] if t.get('alt_bolum') == personel['sorumlu_birim']]
+            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum'] == personel['sorumlu_birim']]
         
         if not gosterilecek_talepler:
             st.info("Biriminize ait aktif talep bulunmamaktadır.")
@@ -441,7 +412,12 @@ with tab2:
                 mevcut_durum = talep.get('durum', durumlar[0])
                 durum_index = durumlar.index(mevcut_durum) if mevcut_durum in durumlar else 0
 
-                personeller = ["Atanmadı"] + [p["ad_soyad"] for p in st.session_state["personeller"] if p["unvan"] != "Süper Admin"]
+                try:
+                    pers_res = supabase.table("personeller").select("ad_soyad").execute()
+                    personeller = ["Atanmadı"] + [p["ad_soyad"] for p in pers_res.data]
+                except Exception:
+                    personeller = ["Atanmadı"]
+
                 mevcut_personel = talep.get('atanan_personel', "Atanmadı")
                 personel_index = personeller.index(mevcut_personel) if mevcut_personel in personeller else 0
 
@@ -472,7 +448,7 @@ with tab2:
                         key=f"saha_foto_up_{talep['talep_id']}_{idx}"
                     )
                     
-                    kaydet_buton = st.form_submit_button(f"💾 Güncellemeyi ve Saha Fotoğrafını Kaydet ({talep['talep_id']})")
+                    kaydet_buton = st.form_submit_button(f"💾 Güncellemeyi Supabase'e Kaydet ({talep['talep_id']})")
                     
                     if kaydet_buton:
                         s_foto_adi = talep.get('saha_fotograf_adi', 'Yüklenmedi')
@@ -483,13 +459,16 @@ with tab2:
                             s_bytes = saha_fotograf_yukleme.getvalue()
                             s_foto_b64 = base64.b64encode(s_bytes).decode("utf-8")
 
-                        for og in st.session_state["yerel_talepler"]:
-                            if og["talep_id"] == talep["talep_id"]:
-                                og['durum'] = yeni_durum
-                                og['atanan_personel'] = atanacak_kisi
-                                og['yönetici_notu'] = yonetici_notu_input
-                                og['saha_fotograf_adi'] = s_foto_adi
-                                og['saha_fotograf_b64'] = s_foto_b64
-                                break
-                        st.success(f"✅ {talep['talep_id']} numaralı talep güncellendi ve saha fotoğrafı işlendi!")
-                        st.rerun()
+                        try:
+                            guncelleme_verisi = {
+                                'durum': yeni_durum,
+                                'atanan_personel': atanacak_kisi,
+                                'yönetici_notu': yonetici_notu_input,
+                                'saha_fotograf_adi': s_foto_adi,
+                                'saha_fotograf_b64': s_foto_b64
+                            }
+                            supabase.table("talepler").update(guncelleme_verisi).eq("talep_id", talep["talep_id"]).execute()
+                            st.success(f"✅ {talep['talep_id']} numaralı talep Supabase veritabanında güncellendi!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Güncelleme sırasında hata oluştu: {e}")
