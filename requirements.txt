@@ -1,4 +1,6 @@
 streamlit
-shapely
-supabase
+sqlalchemy
+psycopg2-binary
 streamlit-geolocation
+shapely
+Pillow
