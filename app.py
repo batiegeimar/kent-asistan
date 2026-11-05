@@ -7,8 +7,6 @@ import base64
 import urllib.parse
 from datetime import datetime
 from shapely.geometry import Point, shape
-# ❌ SİLİNECEK SATIR (10. satır):
-from supabase import create_client, Client
 from streamlit_geolocation import streamlit_geolocation
 
 # Sayfa Yapılandırması
@@ -20,15 +18,13 @@ if "personel_giris" not in st.session_state:
 if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
-# --- POSTGRESQL VERİTABANI BAĞLANTISI (DNS hatasını çözen yöntem) ---
+# --- POSTGRESQL VERİTABANI BAĞLANTISI (st.connection - Kesin Çözüm) ---
 try:
     conn = st.connection("postgresql", type="sql")
     baglanti_hatasi = None
 except Exception as e:
     conn = None
     baglanti_hatasi = str(e)
-
-supabase, baglanti_hatasi = init_supabase()
 
 # Kurumlar Listesi
 kurumlar_listesi = [
@@ -88,10 +84,10 @@ if yenipazar_poligonu is not None:
 else:
     st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Bulunamadı!")
 
-if supabase is not None:
+if baglanti_hatasi is None:
     st.sidebar.success("🟢 Supabase: Bulut Veritabanı Aktif")
 else:
-    st.sidebar.error("🔴 Supabase Bağlantı Hatası!")
+    st.sidebar.error(f"🔴 Supabase Bağlantı Hatası: {baglanti_hatasi}")
 
 st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
 st.write("Yenipazar Belediyesi ve Paydaş Kurumlar Ortak Çözüm Masası")
@@ -176,43 +172,60 @@ with tab1:
                     bytes_data = fotograf.getvalue()
                     foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
                 
-                yeni_kayit_veri = {
-                    "talep_id": talep_id,
-                    "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
-                    "ad_soyad": ad_soyad,
-                    "telefon_no": telefon.strip(),
-                    "il": secilen_il,
-                    "ilce": secilen_ilce,
-                    "ana_kategori": secilen_ana_kategori,
-                    "alt_kategori": secilen_alt_kategori,
-                    "alt_bolum": alt_bolum,
-                    "sorumlu_kurum": sorumlu_kurum,
-                    "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
-                    "enlem": enlem,
-                    "boylam": boylam,
-                    "aciklama": aciklama,
-                    "fotograf_adi": foto_adi,
-                    "fotograf_b64": foto_b64,
-                    "saha_fotograf_adi": "Yüklenmedi",
-                    "saha_fotograf_b64": "",
-                    "olusturma_tarihi": simdiki_zaman,
-                    "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
-                    "atanan_personel": "Atanmadı",
-                    "yönetici_notu": "Henüz not eklenmedi"
-                }
-                
-                if supabase is not None:
+                if conn is not None:
                     try:
-                        supabase.table("talepler").insert(yeni_kayit_veri).execute()
+                        query = """
+                            INSERT INTO talepler (
+                                talep_id, tc_kimlik_no, ad_soyad, telefon_no, il, ilce, 
+                                ana_kategori, alt_kategori, alt_bolum, sorumlu_kurum, 
+                                gps_konum, enlem, boylam, aciklama, fotograf_adi, 
+                                fotograf_b64, saha_fotograf_adi, saha_fotograf_b64, 
+                                olusturma_tarihi, durum, atanan_personel, yönetici_notu
+                            ) VALUES (
+                                :talep_id, :tc_kimlik_no, :ad_soyad, :telefon_no, :il, :ilce, 
+                                :ana_kategori, :alt_kategori, :alt_bolum, :sorumlu_kurum, 
+                                :gps_konum, :enlem, :boylam, :aciklama, :fotograf_adi, 
+                                :fotograf_b64, :saha_fotograf_adi, :saha_fotograf_b64, 
+                                :olusturma_tarihi, :durum, :atanan_personel, :yonetici_notu
+                            )
+                        """
+                        conn.query(
+                            query,
+                            params={
+                                "talep_id": talep_id,
+                                "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
+                                "ad_soyad": ad_soyad,
+                                "telefon_no": telefon.strip(),
+                                "il": secilen_il,
+                                "ilce": secilen_ilce,
+                                "ana_kategori": secilen_ana_kategori,
+                                "alt_kategori": secilen_alt_kategori,
+                                "alt_bolum": alt_bolum,
+                                "sorumlu_kurum": sorumlu_kurum,
+                                "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
+                                "enlem": enlem,
+                                "boylam": boylam,
+                                "aciklama": aciklama,
+                                "fotograf_adi": foto_adi,
+                                "fotograf_b64": foto_b64,
+                                "saha_fotograf_adi": "Yüklenmedi",
+                                "saha_fotograf_b64": "",
+                                "olusturma_tarihi": simdiki_zaman,
+                                "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
+                                "atanan_personel": "Atanmadı",
+                                "yonetici_notu": "Henüz not eklenmedi"
+                            },
+                            ttl=0
+                        )
                         st.success(f"Talebiniz başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}** | Takip Numaranız: **{talep_id}**")
                         st.balloons()
                     except Exception as e:
                         st.error(f"Veritabanı kayıt hatası: {e}")
                 else:
-                    st.error("Supabase bağlantısı kurulamadı.")
+                    st.error("Veritabanı bağlantısı kurulamadı.")
 
 with tab2:
-    st.header("Kurum ve Personel Giriş Paneli")
+    st.header("Kurum dan Personel Giriş Paneli")
     st.info("💡 **Giriş Bilgisi:** Supabase `personeller` tablosundaki kayıtlı telefon numaranız ve şifrenizle giriş yapabilirsiniz.")
 
     if not st.session_state["personel_giris"]:
@@ -223,11 +236,11 @@ with tab2:
             if tel_giris and sifre_giris:
                 try:
                     clean_tel = tel_giris.strip().replace(" ", "")
-                    res = supabase.table("personeller").select("*").eq("telefon_no", clean_tel).eq("sifre", sifre_giris).execute()
-                    personeller_listesi = res.data
+                    q_login = "SELECT * FROM personeller WHERE telefon_no = :tel AND sifre = :sifre;"
+                    df_pers = conn.query(q_login, params={"tel": clean_tel, "sifre": sifre_giris}, ttl=0)
                     
-                    if personeller_listesi and len(personeller_listesi) > 0:
-                        eslesen_personel = personeller_listesi[0]
+                    if not df_pers.empty:
+                        eslesen_personel = df_pers.iloc[0].to_dict()
                         st.session_state["personel_giris"] = True
                         st.session_state["giris_yapan_personel"] = eslesen_personel
                         st.rerun()
@@ -248,13 +261,12 @@ with tab2:
             st.session_state["giris_yapan_personel"] = None
             st.rerun()
 
-        # 👑 TAMAMEN VERİTABANI ODAKLI SÜPER ADMIN KONTROLÜ
-        # unvan alanı 'Süper_Admin' veya 'Süper Admin' olanlar doğrudan platform yöneticisidir.
+        # Süper Admin Kontrolü
         unvan_degeri = str(personel.get("unvan", "")).strip().lower()
         is_super_admin = unvan_degeri in ["süper_admin", "süper admin", "super_admin", "super admin"]
 
         # =========================================================================
-        # 👑 1. SÜPER ADMIN PANELI (Yalnızca Kurum/Yönetici Atama ve Sistem Matrisi)
+        # 👑 1. SÜPER ADMIN PANELI
         # =========================================================================
         if is_super_admin:
             st.markdown("---")
@@ -273,8 +285,8 @@ with tab2:
             if admin_secim == "📊 Sistem Kurum ve Yetkili Matrisi (Genel Liste)":
                 st.markdown("#### 🌐 Supabase Kayıtlı Kurumlar, Birimler ve Yöneticiler")
                 try:
-                    p_res = supabase.table("personeller").select("*").execute()
-                    tum_personeller = p_res.data
+                    df_all_pers = conn.query("SELECT * FROM personeller;", ttl=0)
+                    tum_personeller = df_all_pers.to_dict('records') if not df_all_pers.empty else []
                     
                     for kurum in kurumlar_listesi:
                         kurum_adi = kurum["kurum_adi"]
@@ -305,14 +317,21 @@ with tab2:
                 if st.button("Supabase'e Kurum Yöneticisi Kaydet", key="yonetici_olustur_btn"):
                     if p_ad and p_tel and p_sifre:
                         try:
-                            yeni_personel_veri = {
-                                "ad_soyad": p_ad,
-                                "telefon_no": p_tel.strip(),
-                                "sifre": p_sifre,
-                                "unvan": p_unvan,
-                                "sorumlu_birim": p_birim
-                            }
-                            supabase.table("personeller").insert(yeni_personel_veri).execute()
+                            q_ins = """
+                                INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim)
+                                VALUES (:ad, :tel, :sifre, :unvan, :birim)
+                            """
+                            conn.query(
+                                q_ins,
+                                params={
+                                    "ad": p_ad,
+                                    "tel": p_tel.strip(),
+                                    "sifre": p_sifre,
+                                    "unvan": p_unvan,
+                                    "birim": p_birim
+                                },
+                                ttl=0
+                            )
                             st.success(f"✅ {p_ad} başarıyla kurum yöneticisi olarak eklendi!")
                             st.rerun()
                         except Exception as e:
@@ -321,7 +340,7 @@ with tab2:
                         st.error("Lütfen zorunlu alanları doldurun.")
 
         # =========================================================================
-        # 🏛️ 2. KURUM YETKİLİSİ / MÜDÜR PANELI (Operasyon & Saha Personeli Yönetimi)
+        # 🏛️ 2. KURUM YETKİLİSİ / MÜDÜR PANELI
         # =========================================================================
         else:
             st.markdown("---")
@@ -329,13 +348,12 @@ with tab2:
             st.info("Kurum yöneticisi olarak biriminize gelen talepleri inceleyebilir, saha personellerinize yönlendirebilir ve süreçleri kapatabilirsiniz.")
             
             try:
-                t_res = supabase.table("talepler").select("*").execute()
-                sup_talepler = t_res.data
+                df_t = conn.query("SELECT * FROM talepler;", ttl=0)
+                sup_talepler = df_t.to_dict('records') if not df_t.empty else []
             except Exception as e:
                 sup_talepler = []
                 st.error(f"Talepler yüklenirken hata: {e}")
 
-            # Sadece kendi birimine gelen talepleri filtrele
             gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum') == personel['sorumlu_birim']]
             
             if not gosterilecek_talepler:
@@ -408,8 +426,8 @@ with tab2:
                     durum_index = durumlar.index(mevcut_durum) if mevcut_durum in durumlar else 0
 
                     try:
-                        pers_res = supabase.table("personeller").select("ad_soyad").execute()
-                        personeller = ["Atanmadı"] + [p["ad_soyad"] for p in pers_res.data]
+                        df_p_list = conn.query("SELECT ad_soyad FROM personeller;", ttl=0)
+                        personeller = ["Atanmadı"] + [p["ad_soyad"] for p in df_p_list.to_dict('records')] if not df_p_list.empty else ["Atanmadı"]
                     except Exception:
                         personeller = ["Atanmadı"]
 
@@ -434,14 +452,27 @@ with tab2:
                                 s_foto_b64 = base64.b64encode(s_bytes).decode("utf-8")
 
                             try:
-                                guncelleme_verisi = {
-                                    'durum': yeni_durum,
-                                    'atanan_personel': atanacak_kisi,
-                                    'yönetici_notu': yonetici_notu_input,
-                                    'saha_fotograf_adi': s_foto_adi,
-                                    'saha_fotograf_b64': s_foto_b64
-                                }
-                                supabase.table("talepler").update(guncelleme_verisi).eq("talep_id", talep["talep_id"]).execute()
+                                q_upd = """
+                                    UPDATE talepler 
+                                    SET durum = :durum, 
+                                        atanan_personel = :personel, 
+                                        yönetici_notu = :notu, 
+                                        saha_fotograf_adi = :foto_adi, 
+                                        saha_fotograf_b64 = :foto_b64 
+                                    WHERE talep_id = :tid
+                                """
+                                conn.query(
+                                    q_upd,
+                                    params={
+                                        "durum": yeni_durum,
+                                        "personel": atanacak_kisi,
+                                        "notu": yonetici_notu_input,
+                                        "foto_adi": s_foto_adi,
+                                        "foto_b64": s_foto_b64,
+                                        "tid": talep["talep_id"]
+                                    },
+                                    ttl=0
+                                )
                                 st.success(f"✅ {talep['talep_id']} numaralı talep güncellendi!")
                                 st.rerun()
                             except Exception as e:
