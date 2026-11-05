@@ -1,5 +1,6 @@
 streamlit
 sqlalchemy
+psycopg
 psycopg2-binary
 streamlit-geolocation
 shapely
