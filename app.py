@@ -26,7 +26,6 @@ SUPABASE_KEY = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
 @st.cache_resource
 def init_supabase():
     try:
-        requests.get(f"{SUPABASE_URL}/rest/v1/", headers={"apikey": SUPABASE_KEY}, timeout=3)
         client = create_client(SUPABASE_URL, SUPABASE_KEY)
         return client, None
     except Exception as e:
