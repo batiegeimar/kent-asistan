@@ -19,9 +19,14 @@ if "personel_giris" not in st.session_state:
 if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
-# SUPABASE BAĞLANTI BİLGİLERİ (Kendi URL'nizi buraya eksiksiz yazın)
-SUPABASE_URL = "https://ziubmjjnvcxefodeyvxm.supabase.co"
-SUPABASE_KEY = "sb_publishable_iFUTiJplbyvS-LC-SzwG4g_rgfMbGXi"
+# SUPABASE BAĞLANTI BİLGİLERİ (Güvenli Secrets Entegrasyonu)
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+except Exception:
+    # Yerel testler için yedek (fallback) tanımlama
+    SUPABASE_URL = "https://ziubmjjnvcxfedeyvxm.supabase.co"
+    SUPABASE_KEY = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
 
 @st.cache_resource
 def init_supabase():
