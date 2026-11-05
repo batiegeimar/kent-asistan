@@ -20,8 +20,8 @@ if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
 # SUPABASE BAĞLANTI BİLGİLERİ (Kendi URL'nizi buraya eksiksiz yazın)
-SUPABASE_URL = "https://ziubmjjnvcxfedeyvxm.supabase.co"
-SUPABASE_KEY = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
+SUPABASE_URL = "https://ziubmjjnvcxefodeyvxm.supabase.co"
+SUPABASE_KEY = "sb_publishable_iFUTiJplbyvS-LC-SzwG4g_rgfMbGXi"
 
 @st.cache_resource
 def init_supabase():
