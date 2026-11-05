@@ -19,6 +19,7 @@ if "personel_giris" not in st.session_state:
 if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
+# SUPABASE BAĞLANTI BİLGİLERİ (Kendi URL'nizi buraya eksiksiz yazın)
 SUPABASE_URL = "https://ziubmjjnvcxfedeyvxm.supabase.co"
 SUPABASE_KEY = "sb_publishable_iFUTiJpbyvS-LC-SzwG4g_rgfMBGXi"
 
@@ -215,7 +216,7 @@ with tab1:
 
 with tab2:
     st.header("Kurum ve Personel Giriş Paneli")
-    st.info("💡 **Giriş Bilgisi:** Supabase `personeller` tablosundaki kayıtlı telefon numaranız (`0555...`) ve şifrenizle giriş yapabilirsiniz.")
+    st.info("💡 **Giriş Bilgisi:** Supabase `personeller` tablosundaki kayıtlı telefon numaranız ve şifrenizle giriş yapabilirsiniz.")
 
     if not st.session_state["personel_giris"]:
         tel_giris = st.text_input("Telefon Numarası (Örn: 0555...)", key="personel_tel_input")
@@ -250,8 +251,10 @@ with tab2:
             st.session_state["giris_yapan_personel"] = None
             st.rerun()
 
-        # Süper Admin Kontrolü
-        is_super_admin = (personel.get("unvan") == "Süper Admin" or personel.get("telefon_no") == "05550000000")
+        # 👑 TAMAMEN VERİTABANI ODAKLI SÜPER ADMIN KONTROLÜ
+        # unvan alanı 'Süper_Admin' veya 'Süper Admin' olanlar doğrudan platform yöneticisidir.
+        unvan_degeri = str(personel.get("unvan", "")).strip().lower()
+        is_super_admin = unvan_degeri in ["süper_admin", "süper admin", "super_admin", "super admin"]
 
         # =========================================================================
         # 👑 1. SÜPER ADMIN PANELI (Yalnızca Kurum/Yönetici Atama ve Sistem Matrisi)
@@ -259,7 +262,7 @@ with tab2:
         if is_super_admin:
             st.markdown("---")
             st.subheader("👑 Süper Admin - Platform Yönetim Paneli")
-            st.info("Platform Sahibi olarak yalnızca paydaş kurumları, alt birimleri ve bu birimlerin kurum yöneticilerini (müdürleri) tanımlayabilirsiniz.")
+            st.info("Platform Sahibi olarak yalnızca paydaş kurumları, alt birimleri ve bu birimlerin kurum yöneticilerini (müdürlerini) veritabanı üzerinden yönetebilirsiniz.")
             
             admin_secim = st.radio(
                 "Yönetim İşlemi Seçin:", 
