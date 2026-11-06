@@ -1,4 +1,5 @@
 import streamlit as st
+from sqlalchemy import text
 import random
 from PIL import Image
 import io
