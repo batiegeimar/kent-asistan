@@ -315,30 +315,30 @@ with tab2:
                 p_birim = st.selectbox("Sorumlu Olduğu Kurum / Birim", birim_secenekleri, key="p_birim_select")
                 
                 if st.button("Supabase'e Kurum Yöneticisi Kaydet", key="yonetici_olustur_btn"):
-            if p_ad and p_tel and p_sifre:
-                try:
-                    with conn.session as s:
-                        s.execute(
-                            text("""
-                                INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim)
-                                VALUES (:ad, :tel, :sifre, :unvan, :birim)
-                            """),
-                            {
-                                "ad": p_ad,
-                                "tel": p_tel.strip(),
-                                "sifre": p_sifre,
-                                "unvan": p_unvan,
-                                "birim": p_birim
-                            }
-                        )
-                        s.commit()
+                    if p_ad and p_tel and p_sifre:
+                        try:
+                            with conn.session as s:
+                                s.execute(
+                                    text("""
+                                        INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim)
+                                        VALUES (:ad, :tel, :sifre, :unvan, :birim)
+                                    """),
+                                    {
+                                        "ad": p_ad,
+                                        "tel": p_tel.strip(),
+                                        "sifre": p_sifre,
+                                        "unvan": p_unvan,
+                                        "birim": p_birim
+                                    }
+                                )
+                                s.commit()
                     
-                    st.success(f"✅ {p_ad} başarıyla kurum yöneticisi olarak eklendi!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Kayıt eklenirken hata oluştu: {e}")
-            else:
-                st.error("Lütfen zorunlu alanları doldurun.")
+                            st.success(f"✅ {p_ad} başarıyla kurum yöneticisi olarak eklendi!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Kayıt eklenirken hata oluştu: {e}")
+                    else:
+                        st.error("Lütfen zorunlu alanları doldurun.")
 
         # =========================================================================
         # 🏛️ 2. KURUM YETKİLİSİ / MÜDÜR PANELI
