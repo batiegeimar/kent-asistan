@@ -348,7 +348,58 @@ with tab2:
             st.markdown("---")
             st.subheader(f"📋 {personel['sorumlu_birim']} - Kurum Operasyon Paneli")
             st.info("Kurum yöneticisi olarak biriminize gelen talepleri inceleyebilir, saha personellerinize yönlendirebilir ve süreçleri kapatabilirsiniz.")
+            # --- BİRİM PERSONEL YÖNETİMİ ---
+            with st.expander("👥 Birim Saha Personelleri ve Yeni Personel Ekle"):
+                st.markdown(f"**{personel['sorumlu_birim']}** biriminize bağlı saha personellerini buradan ekleyebilir ve listeleyebilirsiniz.")
+                
+                try:
+                    df_birim_pers = conn.query("SELECT * FROM personeller WHERE sorumlu_birim = :birim;", params={"birim": personel['sorumlu_birim']}, ttl=0)
+                    if not df_birim_pers.empty:
+                        st.markdown("**Mevcut Birim Personelleri:**")
+                        for _, bp in df_birim_pers.iterrows():
+                            st.write(f"- 👤 **{bp['ad_soyad']}** | Tel: `{bp.get('telefon_no')}` | Unvan: *{bp['unvan']}*")
+                    else:
+                        st.info("Bu birime kayıtlı henüz personel bulunmamaktadır.")
+                except Exception as e:
+                    st.error(f"Personeller listelenirken hata: {e}")
+
+                st.markdown("---")
+                st.markdown("#### ➕ Yeni Saha Personeli Tanımla")
+                
+                with st.form("birim_alt_personel_form"):
+                    alt_ad = st.text_input("Personelin Adı Soyadı", key="birim_alt_ad")
+                    alt_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)", key="birim_alt_tel")
+                    alt_sifre = st.text_input("Şifre", type="password", key="birim_alt_sifre")
+                    alt_unvan = st.selectbox("Unvan", ["Saha Personeli", "Usta", "Teknisyen", "Operatör", "Saha Ekip Sorumlusu"], key="birim_alt_unvan")
+                    
+                    alt_kaydet_btn = st.form_submit_button("Birimime Saha Personeli Kaydet")
+                    
+                    if alt_kaydet_btn:
+                        if alt_ad and alt_tel and alt_sifre:
+                            try:
+                                with conn.session as s:
+                                    s.execute(
+                                        text("""
+                                            INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim)
+                                            VALUES (:ad, :tel, :sifre, :unvan, :birim)
+                                        """),
+                                        {
+                                            "ad": alt_ad,
+                                            "tel": alt_tel.strip(),
+                                            "sifre": alt_sifre,
+                                            "unvan": alt_unvan,
+                                            "birim": personel['sorumlu_birim']
+                                        }
+                                    )
+                                    s.commit()
+                                st.success(f"✅ {alt_ad} başarıyla {personel['sorumlu_birim']} birimine personel olarak eklendi!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Personel eklenirken hata oluştu: {e}")
+                        else:
+                            st.warning("Lütfen zorunlu alanları doldurun.")
             
+            st.markdown("---")
             try:
                 df_t = conn.query("SELECT * FROM talepler;", ttl=0)
                 sup_talepler = df_t.to_dict('records') if not df_t.empty else []
