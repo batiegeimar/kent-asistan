@@ -181,13 +181,13 @@ with tab1:
                                 ana_kategori, alt_kategori, alt_bolum, sorumlu_kurum, 
                                 gps_konum, enlem, boylam, aciklama, fotograf_adi, 
                                 fotograf_b64, saha_fotograf_adi, saha_fotograf_b64, 
-                                olusturma_tarihi, durum, atanan_personel, yönetici_notu
+                                olusturma_tarihi, guncelleme_tarihi, cozum_tarihi, durum, atanan_personel, yönetici_notu
                             ) VALUES (
                                 :talep_id, :tc_kimlik_no, :ad_soyad, :telefon_no, :il, :ilce, 
                                 :ana_kategori, :alt_kategori, :alt_bolum, :sorumlu_kurum, 
                                 :gps_konum, :enlem, :boylam, :aciklama, :fotograf_adi, 
                                 :fotograf_b64, :saha_fotograf_adi, :saha_fotograf_b64, 
-                                :olusturma_tarihi, :durum, :atanan_personel, :yonetici_notu
+                                :olusturma_tarihi, :guncelleme_tarihi, :cozum_tarihi, :durum, :atanan_personel, :yonetici_notu
                             )
                         """
                         with conn.session as s:
@@ -213,6 +213,8 @@ with tab1:
                                     "saha_fotograf_adi": "Yüklenmedi",
                                     "saha_fotograf_b64": "",
                                     "olusturma_tarihi": simdiki_zaman,
+                                    "guncelleme_tarihi": "Henüz işlem yapılmadı",
+                                    "cozum_tarihi": "Henüz çözülmedi",
                                     "durum": "Yeni (İnceleme Bekliyor)",
                                     "atanan_personel": "Atanmadı",
                                     "yonetici_notu": "Henüz not eklenmedi"
@@ -371,7 +373,6 @@ with tab2:
                 st.markdown(f"**{personel['sorumlu_birim']}** biriminize bağlı saha personellerini buradan listeleyebilir, ekleyebilir veya mükerrer/hatalı kayıtları silebilirsiniz.")
                 
                 try:
-                    # Yalnızca saha personeli unvanına sahip personelleri listeleyerek müdürün kendi kendini silmesini engelliyoruz
                     df_birim_pers = conn.query(
                         "SELECT * FROM personeller WHERE sorumlu_birim = :birim AND unvan IN ('Saha Personeli', 'Usta', 'Teknisyen', 'Operatör', 'Saha Ekip Sorumlusu');", 
                         params={"birim": personel['sorumlu_birim']}, 
@@ -457,12 +458,17 @@ with tab2:
                         st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
                         st.markdown(f"**Telefon:** {talep['telefon_no']}")
                         st.markdown(f"**Sorumlu Kurum:** {talep.get('sorumlu_kurum', 'Belediye')}")
-                        st.markdown(f"**Tarih:** {talep.get('olusturma_tarihi', 'Bilinmiyor')}")
                         st.markdown(f"**Konum:** {talep['gps_konum']}")
                         st.markdown(f"**Mevcut Durum:** {talep.get('durum', 'Yeni')}")
                         st.markdown(f"**Atanan Saha Personeli:** {talep.get('atanan_personel', 'Atanmadı')}")
                         st.markdown(f"**Açıklama:** {talep['aciklama']}")
                         st.markdown(f"**Yönetici Notu / Red Gerekçesi:** {talep.get('yönetici_notu', 'Yok')}")
+                        
+                        st.markdown("---")
+                        st.markdown("🕒 **Zaman Damgaları & Denetim İzleri:**")
+                        st.markdown(f"- 📝 **Kayıt Zamanı:** `{talep.get('olusturma_tarihi', 'Bilinmiyor')}`")
+                        st.markdown(f"- ⚙️ **Yönetici İşlem Zamanı:** `{talep.get('guncelleme_tarihi', 'Henüz işlem yapılmadı')}`")
+                        st.markdown(f"- ✅ **Saha Çözüm Zamanı:** `{talep.get('cozum_tarihi', 'Henüz çözülmedi')}`")
                         
                         lat = talep.get('enlem')
                         lon = talep.get('boylam')
@@ -543,6 +549,18 @@ with tab2:
                             if "Reddedildi" in yeni_durum and not yonetici_notu_input.strip():
                                 st.warning("⚠️ Talebi reddettiğiniz için lütfen bir ret gerekçesi (açıklama) yazınız.")
                             else:
+                                simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                
+                                # Yönetim işlem tarihi her güncellemede güncellenir
+                                guncelleme_tarihi = simdiki_zaman
+                                
+                                # Eğer durum Çözüldü - Kapatıldı ise çözüm tarihini de mühürle
+                                mevcut_cozum_tarihi = talep.get('cozum_tarihi', 'Henüz çözülmedi')
+                                if yeni_durum == "Çözüldü - Kapatıldı" and (not mevcut_cozum_tarihi or "Henüz" in mevcut_cozum_tarihi):
+                                    cozum_tarihi = simdiki_zaman
+                                else:
+                                    cozum_tarihi = mevcut_cozum_tarihi
+
                                 s_foto_adi = talep.get('saha_fotograf_adi', 'Yüklenmedi')
                                 s_foto_b64 = talep.get('saha_fotograf_b64', '')
 
@@ -558,7 +576,9 @@ with tab2:
                                             atanan_personel = :personel, 
                                             yönetici_notu = :notu, 
                                             saha_fotograf_adi = :foto_adi, 
-                                            saha_fotograf_b64 = :foto_b64 
+                                            saha_fotograf_b64 = :foto_b64,
+                                            guncelleme_tarihi = :g_tarih,
+                                            cozum_tarihi = :c_tarih
                                         WHERE talep_id = :tid
                                     """
                                     with conn.session as s:
@@ -570,12 +590,14 @@ with tab2:
                                                 "notu": yonetici_notu_input,
                                                 "foto_adi": s_foto_adi,
                                                 "foto_b64": s_foto_b64,
+                                                "g_tarih": guncelleme_tarihi,
+                                                "c_tarih": cozum_tarihi,
                                                 "tid": talep["talep_id"]
                                             }
                                         )
                                         s.commit()
                                         
-                                    st.success(f"✅ {talep['talep_id']} numaralı talep kararı güncellendi!")
+                                    st.success(f"✅ {talep['talep_id']} numaralı talep zaman damgalarıyla güncellendi!")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Güncelleme hatası: {e}")
