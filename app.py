@@ -366,14 +366,19 @@ with tab2:
             st.subheader(f"📋 {personel['sorumlu_birim']} - Kurum Operasyon Paneli")
             st.info("Kurum yöneticisi olarak biriminize gelen talepleri inceleyebilir, **kabul edebilir veya gerekçeli olarak reddedebilir**, onaylananları saha personeline yönlendirebilirsiniz.")
             
-            # --- BİRİM PERSONEL YÖNETİMİ ---
-            with st.expander("👥 Birim Saha Personelleri ve Yeni Personel Ekle"):
-                st.markdown(f"**{personel['sorumlu_birim']}** biriminize bağlı saha personellerini buradan yönetebilir veya silebilirsiniz.")
+            # --- BİRİM PERSONEL YÖNETİMİ VE MÜKERRER KAYIT SİLME ---
+            with st.expander("👥 Birim Saha Personelleri, Yeni Personel Ekle ve Mükerrer Kayıt Sil"):
+                st.markdown(f"**{personel['sorumlu_birim']}** biriminize bağlı saha personellerini buradan listeleyebilir, ekleyebilir veya mükerrer/hatalı kayıtları silebilirsiniz.")
                 
                 try:
-                    df_birim_pers = conn.query("SELECT * FROM personeller WHERE sorumlu_birim = :birim;", params={"birim": personel['sorumlu_birim']}, ttl=0)
+                    # Yalnızca saha personeli unvanına sahip personelleri listeleyerek müdürün kendi kendini silmesini engelliyoruz
+                    df_birim_pers = conn.query(
+                        "SELECT * FROM personeller WHERE sorumlu_birim = :birim AND unvan IN ('Saha Personeli', 'Usta', 'Teknisyen', 'Operatör', 'Saha Ekip Sorumlusu');", 
+                        params={"birim": personel['sorumlu_birim']}, 
+                        ttl=0
+                    )
                     if not df_birim_pers.empty:
-                        st.markdown("**Mevcut Birim Personelleri:**")
+                        st.markdown("**Mevcut Birim Saha Personelleri:**")
                         for _, bp in df_birim_pers.iterrows():
                             c_info, c_del = st.columns([4, 1])
                             with c_info:
@@ -387,12 +392,12 @@ with tab2:
                                                 {"tel": bp.get('telefon_no'), "ad": bp.get('ad_soyad')}
                                             )
                                             s.commit()
-                                        st.success(f"✅ {bp['ad_soyad']} silindi!")
+                                        st.success(f"✅ {bp['ad_soyad']} başarıyla silindi!")
                                         st.rerun()
                                     except Exception as e:
                                         st.error(f"Personel silinirken hata: {e}")
                     else:
-                        st.info("Bu birime kayıtlı henüz personel bulunmamaktadır.")
+                        st.info("Bu birime kayıtlı henüz saha personeli bulunmamaktadır.")
                 except Exception as e:
                     st.error(f"Personeller listelenirken hata: {e}")
 
@@ -440,7 +445,7 @@ with tab2:
                 sup_talepler = []
                 st.error(f"Talepler yüklenirken hata: {e}")
 
-            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum') == personel['sorumlu_birim']]
+            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum'] == personel['sorumlu_birim']]
             
             if not gosterilecek_talepler:
                 st.info("Biriminize ait aktif talep bulunmamaktadır.")
@@ -535,7 +540,6 @@ with tab2:
                         kaydet_buton = st.form_submit_button(f"💾 Kararı ve Güncellemeyi Kaydet ({talep['talep_id']})")
                         
                         if kaydet_buton:
-                            # Eğer talep reddedildiyse açıklama zorunlu kılınabilir veya uyarı verilebilir
                             if "Reddedildi" in yeni_durum and not yonetici_notu_input.strip():
                                 st.warning("⚠️ Talebi reddettiğiniz için lütfen bir ret gerekçesi (açıklama) yazınız.")
                             else:
