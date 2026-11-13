@@ -33,7 +33,7 @@ kurumlar_listesi = [
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Zabıta / Çevre Koruma"},
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Temizlik İşleri Müdürlüğü"},
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Park ve Bahçeler Müdürlüğü"},
-    {"kurum_adi": "Aydın Su ve Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
+    {"kurum_adi": "Aydın Su dan Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
     {"kurum_adi": "Aydem Elektrik", "alt_bolum": "Elektrik Dağıtım Birimi"},
     {"kurum_adi": "Enerya Doğalgaz", "alt_bolum": "Doğalgaz Acil Servis"}
 ]
@@ -220,38 +220,6 @@ with tab1:
                             )
                             s.commit()
                             
-                        st.success(f"Talebiniz başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}** | Takip Numaranız: **{talep_id}**")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Veritabanı kayıt hatası: {e}")
-                        conn.query(
-                            query,
-                            params={
-                                "talep_id": talep_id,
-                                "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
-                                "ad_soyad": ad_soyad,
-                                "telefon_no": telefon.strip(),
-                                "il": secilen_il,
-                                "ilce": secilen_ilce,
-                                "ana_kategori": secilen_ana_kategori,
-                                "alt_kategori": secilen_alt_kategori,
-                                "alt_bolum": alt_bolum,
-                                "sorumlu_kurum": sorumlu_kurum,
-                                "gps_konum": f"Otomatik GPS (Enlem: {enlem}, Boylam: {boylam})",
-                                "enlem": enlem,
-                                "boylam": boylam,
-                                "aciklama": aciklama,
-                                "fotograf_adi": foto_adi,
-                                "fotograf_b64": foto_b64,
-                                "saha_fotograf_adi": "Yüklenmedi",
-                                "saha_fotograf_b64": "",
-                                "olusturma_tarihi": simdiki_zaman,
-                                "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
-                                "atanan_personel": "Atanmadı",
-                                "yonetici_notu": "Henüz not eklenmedi"
-                            },
-                            ttl=0
-                        )
                         st.success(f"Talebiniz başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}** | Takip Numaranız: **{talep_id}**")
                         st.balloons()
                     except Exception as e:
@@ -548,18 +516,20 @@ with tab2:
                                         saha_fotograf_b64 = :foto_b64 
                                     WHERE talep_id = :tid
                                 """
-                                conn.query(
-                                    q_upd,
-                                    params={
-                                        "durum": yeni_durum,
-                                        "personel": atanacak_kisi,
-                                        "notu": yonetici_notu_input,
-                                        "foto_adi": s_foto_adi,
-                                        "foto_b64": s_foto_b64,
-                                        "tid": talep["talep_id"]
-                                    },
-                                    ttl=0
-                                )
+                                with conn.session as s:
+                                    s.execute(
+                                        text(q_upd),
+                                        {
+                                            "durum": yeni_durum,
+                                            "personel": atanacak_kisi,
+                                            "notu": yonetici_notu_input,
+                                            "foto_adi": s_foto_adi,
+                                            "foto_b64": s_foto_b64,
+                                            "tid": talep["talep_id"]
+                                        }
+                                    )
+                                    s.commit()
+                                    
                                 st.success(f"✅ {talep['talep_id']} numaralı talep güncellendi!")
                                 st.rerun()
                             except Exception as e:
