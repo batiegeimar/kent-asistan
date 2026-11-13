@@ -213,7 +213,7 @@ with tab1:
                                     "saha_fotograf_adi": "Yüklenmedi",
                                     "saha_fotograf_b64": "",
                                     "olusturma_tarihi": simdiki_zaman,
-                                    "durum": "Yeni (GPS Sınır İçi Doğrulandı)",
+                                    "durum": "Yeni (İnceleme Bekliyor)",
                                     "atanan_personel": "Atanmadı",
                                     "yonetici_notu": "Henüz not eklenmedi"
                                 }
@@ -228,7 +228,7 @@ with tab1:
                     st.error("Veritabanı bağlantısı kurulamadı.")
 
 with tab2:
-    st.header("Kurum dan Personel Giriş Paneli")
+    st.header("Kurum ve Personel Giriş Paneli")
     st.info("💡 **Giriş Bilgisi:** Supabase `personeller` tablosundaki kayıtlı telefon numaranız ve şifrenizle giriş yapabilirsiniz.")
 
     if not st.session_state["personel_giris"]:
@@ -364,7 +364,7 @@ with tab2:
         else:
             st.markdown("---")
             st.subheader(f"📋 {personel['sorumlu_birim']} - Kurum Operasyon Paneli")
-            st.info("Kurum yöneticisi olarak biriminize gelen talepleri inceleyebilir, saha personellerinize yönlendirebilir ve süreçleri kapatabilirsiniz.")
+            st.info("Kurum yöneticisi olarak biriminize gelen talepleri inceleyebilir, **kabul edebilir veya gerekçeli olarak reddedebilir**, onaylananları saha personeline yönlendirebilirsiniz.")
             
             # --- BİRİM PERSONEL YÖNETİMİ ---
             with st.expander("👥 Birim Saha Personelleri ve Yeni Personel Ekle"):
@@ -457,7 +457,7 @@ with tab2:
                         st.markdown(f"**Mevcut Durum:** {talep.get('durum', 'Yeni')}")
                         st.markdown(f"**Atanan Saha Personeli:** {talep.get('atanan_personel', 'Atanmadı')}")
                         st.markdown(f"**Açıklama:** {talep['aciklama']}")
-                        st.markdown(f"**Yönetici Notu:** {talep.get('yönetici_notu', 'Yok')}")
+                        st.markdown(f"**Yönetici Notu / Red Gerekçesi:** {talep.get('yönetici_notu', 'Yok')}")
                         
                         lat = talep.get('enlem')
                         lon = talep.get('boylam')
@@ -505,9 +505,15 @@ with tab2:
                             st.info("Saha bitiş fotoğrafı henüz yüklenmedi.")
                     
                     st.markdown("---")
-                    st.markdown("⚙️ **Operasyon Yönetimi ve Durum Güncelleme**")
+                    st.markdown("⚙️ **Operasyon Yönetimi ve Kabul / Red Mekanizması**")
                     
-                    durumlar = ["Yeni (GPS Sınır İçi Doğrulandı)", "İnceleniyor", "Saha Ekibine Sevk Edildi", "Çözüldü - Kapatıldı"]
+                    durumlar = [
+                        "Yeni (İnceleme Bekliyor)", 
+                        "✅ Talep Kabul Edildi", 
+                        "❌ Talep Reddedildi (Gerekçeli)", 
+                        "Saha Ekibine Sevk Edildi", 
+                        "Çözüldü - Kapatıldı"
+                    ]
                     mevcut_durum = talep.get('durum', durumlar[0])
                     durum_index = durumlar.index(mevcut_durum) if mevcut_durum in durumlar else 0
 
@@ -521,47 +527,51 @@ with tab2:
                     personel_index = personeller.index(mevcut_personel) if mevcut_personel in personeller else 0
 
                     with st.form(key=f"form_{talep['talep_id']}_{idx}"):
-                        yeni_durum = st.selectbox("Talep Durumunu Güncelle", durumlar, index=durum_index, key=f"durum_sel_{talep['talep_id']}_{idx}")
-                        atanacak_kisi = st.selectbox("Saha Personeli Ata", personeller, index=personel_index, key=f"personel_sel_{talep['talep_id']}_{idx}")
-                        yonetici_notu_input = st.text_area("Kurum Notu Ekle", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
+                        yeni_durum = st.selectbox("Talep İnceleme ve Durum Güncelle", durumlar, index=durum_index, key=f"durum_sel_{talep['talep_id']}_{idx}")
+                        atanacak_kisi = st.selectbox("Saha Personeli Ata", personeller, index=personel_index, key=f5 := f"personel_sel_{talep['talep_id']}_{idx}")
+                        yonetici_notu_input = st.text_area("Yönetici Notu veya Red Gerekçesi Yazın", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
                         saha_fotograf_yukleme = st.file_uploader("Sahadan Çözüm Fotoğrafı Yükle", type=["jpg", "jpeg", "png"], key=f"saha_foto_up_{talep['talep_id']}_{idx}")
                         
-                        kaydet_buton = st.form_submit_button(f"💾 Güncellemeyi Kaydet ({talep['talep_id']})")
+                        kaydet_buton = st.form_submit_button(f"💾 Kararı ve Güncellemeyi Kaydet ({talep['talep_id']})")
                         
                         if kaydet_buton:
-                            s_foto_adi = talep.get('saha_fotograf_adi', 'Yüklenmedi')
-                            s_foto_b64 = talep.get('saha_fotograf_b64', '')
+                            # Eğer talep reddedildiyse açıklama zorunlu kılınabilir veya uyarı verilebilir
+                            if "Reddedildi" in yeni_durum and not yonetici_notu_input.strip():
+                                st.warning("⚠️ Talebi reddettiğiniz için lütfen bir ret gerekçesi (açıklama) yazınız.")
+                            else:
+                                s_foto_adi = talep.get('saha_fotograf_adi', 'Yüklenmedi')
+                                s_foto_b64 = talep.get('saha_fotograf_b64', '')
 
-                            if saha_fotograf_yukleme is not None:
-                                s_foto_adi = saha_fotograf_yukleme.name
-                                s_bytes = saha_fotograf_yukleme.getvalue()
-                                s_foto_b64 = base64.b64encode(s_bytes).decode("utf-8")
+                                if saha_fotograf_yukleme is not None:
+                                    s_foto_adi = saha_fotograf_yukleme.name
+                                    s_bytes = saha_fotograf_yukleme.getvalue()
+                                    s_foto_b64 = base64.b64encode(s_bytes).decode("utf-8")
 
-                            try:
-                                q_upd = """
-                                    UPDATE talepler 
-                                    SET durum = :durum, 
-                                        atanan_personel = :personel, 
-                                        yönetici_notu = :notu, 
-                                        saha_fotograf_adi = :foto_adi, 
-                                        saha_fotograf_b64 = :foto_b64 
-                                    WHERE talep_id = :tid
-                                """
-                                with conn.session as s:
-                                    s.execute(
-                                        text(q_upd),
-                                        {
-                                            "durum": yeni_durum,
-                                            "personel": atanacak_kisi,
-                                            "notu": yonetici_notu_input,
-                                            "foto_adi": s_foto_adi,
-                                            "foto_b64": s_foto_b64,
-                                            "tid": talep["talep_id"]
-                                        }
-                                    )
-                                    s.commit()
-                                    
-                                st.success(f"✅ {talep['talep_id']} numaralı talep güncellendi!")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Güncelleme hatası: {e}")
+                                try:
+                                    q_upd = """
+                                        UPDATE talepler 
+                                        SET durum = :durum, 
+                                            atanan_personel = :personel, 
+                                            yönetici_notu = :notu, 
+                                            saha_fotograf_adi = :foto_adi, 
+                                            saha_fotograf_b64 = :foto_b64 
+                                        WHERE talep_id = :tid
+                                    """
+                                    with conn.session as s:
+                                        s.execute(
+                                            text(q_upd),
+                                            {
+                                                "durum": yeni_durum,
+                                                "personel": atanacak_kisi,
+                                                "notu": yonetici_notu_input,
+                                                "foto_adi": s_foto_adi,
+                                                "foto_b64": s_foto_b64,
+                                                "tid": talep["talep_id"]
+                                            }
+                                        )
+                                        s.commit()
+                                        
+                                    st.success(f"✅ {talep['talep_id']} numaralı talep kararı güncellendi!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Güncelleme hatası: {e}")
