@@ -12,7 +12,46 @@ from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
 
 # Sayfa Yapılandırması
-st.set_page_config(page_title="KentAsistan - Vatandaş Bildirim ve Çözüm Portalı", layout="centered")
+st.set_page_config(page_title="KentAsistan - Akıllı Kent ve Saha Yönetimi", layout="centered", page_icon="🏙️")
+
+# --- KURUMSAL CSS TASARIM ENJEKSİYONU ---
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f8fafc;
+    }
+    h1, h2, h3 {
+        color: #1e293b;
+        font-family: 'Inter', sans-serif;
+    }
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .streamlit-expanderHeader {
+        background-color: #ffffff;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-weight: 600;
+        color: #334155;
+    }
+    .stButton>button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #0f172a;
+        color: #ffffff;
+    }
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #e2e8f0;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- GLOBAL OTURUM HAFIZASI ---
 if "personel_giris" not in st.session_state:
@@ -91,14 +130,16 @@ if baglanti_hatasi is None:
 else:
     st.sidebar.error(f"🔴 Supabase Bağlantı Hatası: {baglanti_hatasi}")
 
-st.title("🏙️ KentAsistan - Vatandaş Bildirim ve Çözüm Portalı")
-st.write("Yenipazar Belediyesi ve Paydaş Kurumlar Ortak Çözüm Masası")
+st.title("🏙️ KentAsistan - Akıllı Kent ve Saha Yönetimi")
+st.markdown("##### *Yenipazar Belediyesi ve Paydaş Kurumlar Ortak Çözüm Masası*")
+st.markdown("---")
 
-# Üç Ana Sekme Yapısı (Raporlama Sekmesi Eklendi)
-tab1, tab2, tab3 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Kurum / Yönetim Paneli", "📊 Yapay Zeka Raporları"])
+# İki Temel Güvenli Sekme (Raporlama Alanı Kurum Paneline Taşındı)
+tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Kurum / Yönetim Paneli"])
 
 with tab1:
     st.header("Yeni Talep Oluştur")
+    st.write("Kırsal mahalleler ve merkez dahil tüm vatandaşlarımız için hızlı bildirim portalı.")
     
     col_il1, col_il2 = st.columns(2)
     with col_il1:
@@ -138,7 +179,7 @@ with tab1:
     fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"], key="vat_foto")
     aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...", key="vat_aciklama")
     
-    gonder_btn = st.button("Talebi Gönder", key="vat_gonder_btn")
+    gonder_btn = st.button("Talebi Gönder", key="vat_gonder_btn", type="primary")
     
     if gonder_btn:
         if not ad_soyad or not telefon or not aciklama:
@@ -233,13 +274,13 @@ with tab1:
 
 with tab2:
     st.header("Kurum ve Personel Giriş Paneli")
-    st.info("💡 **Giriş Bilgisi:** Supabase `personeller` tablosundaki kayıtlı telefon numaranız ve şifrenizle giriş yapabilirsiniz.")
+    st.info("💡 **Güvenlik Notu:** Bu alan yalnızca yetkili kurum yöneticilerine, amirlere ve süper adminlere özeldir.")
 
     if not st.session_state["personel_giris"]:
         tel_giris = st.text_input("Telefon Numarası (Örn: 0555...)", key="personel_tel_input")
         sifre_giris = st.text_input("Şifre", type="password", key="personel_sifre_input")
         
-        if st.button("Güvenli Giriş Yap", key="personel_giris_btn"):
+        if st.button("Güvenli Giriş Yap", key="personel_giris_btn", type="primary"):
             if tel_giris and sifre_giris:
                 try:
                     clean_tel = tel_giris.strip().replace(" ", "")
@@ -258,7 +299,7 @@ with tab2:
             else:
                 st.warning("Lütfen telefon numaranızı ve şifrenizi giriniz.")
 
-    # Oturum Açıldığında
+    # Oturum Açıldığında (Yönetici / Admin Yetkili Alanı)
     if st.session_state["personel_giris"]:
         personel = st.session_state["giris_yapan_personel"]
         st.success(f"Hoş geldiniz, {personel['ad_soyad']} ({personel['unvan']} - {personel['sorumlu_birim']})")
@@ -336,7 +377,7 @@ with tab2:
                 birim_secenekleri = [k["alt_bolum"] for k in kurumlar_listesi]
                 p_birim = st.selectbox("Sorumlu Olduğu Kurum / Birim", birim_secenekleri, key="p_birim_select")
                 
-                if st.button("Supabase'e Kurum Yöneticisi Kaydet", key="yonetici_olustur_btn"):
+                if st.button("Supabase'e Kurum Yöneticisi Kaydet", key="yonetici_olustur_btn", type="primary"):
                     if p_ad and p_tel and p_sifre:
                         try:
                             with conn.session as s:
@@ -545,7 +586,7 @@ with tab2:
                         yonetici_notu_input = st.text_area("Yönetici Notu veya Red Gerekçesi Yazın", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
                         saha_fotograf_yukleme = st.file_uploader("Sahadan Çözüm Fotoğrafı Yükle", type=["jpg", "jpeg", "png"], key=f"saha_foto_up_{talep['talep_id']}_{idx}")
                         
-                        kaydet_buton = st.form_submit_button(f"💾 Kararı ve Güncellemeyi Kaydet ({talep['talep_id']})")
+                        kaydet_buton = st.form_submit_button(f"💾 Kararı ve Güncellemeyi Kaydet ({talep['talep_id']})", type="primary")
                         
                         if kaydet_buton:
                             if "Reddedildi" in yeni_durum and not yonetici_notu_input.strip():
@@ -601,74 +642,68 @@ with tab2:
                                 except Exception as e:
                                     st.error(f"Güncelleme hatası: {e}")
 
-# =========================================================================
-# 📊 3. YAPAY ZEKA DESTEKLİ KURUMSAL RAPORLAR VE ANALİZ MERKEZİ
-# =========================================================================
-with tab3:
-    st.header("📊 KentAsistan - Yapay Zeka Destekli Yönetici Raporu ve Analiz Merkezi")
-    st.info("Bu panel; sistemdeki tüm zaman damgalarını, birim yüklerini ve coğrafi verileri analiz ederek kurumsal karar vericiler ve başkanlık makamı için akıllı özetler üretir.")
-    
-    if conn is not None:
-        try:
-            df_rapor = conn.query("SELECT * FROM talepler;", ttl=0)
+            # =========================================================================
+            # 📊 GÜVENLİ ALAN: YAPAY ZEKA DESTEKLİ KURUMSAL RAPORLAR VE ANALİZ MERKEZİ
+            # =========================================================================
+            st.markdown("---")
+            st.markdown("---")
+            st.header("📊 Yapay Zeka Destekli Yönetici Raporu ve Analiz Merkezi")
+            st.info("Bu panel yalnızca yetkili yönetici ve amirlerin erişimine açık olup; zaman damgalarını, birim yüklerini ve coğrafi verileri analiz ederek başkanlık makamı için stratejik özetler üretir.")
             
-            if not df_rapor.empty:
-                # Temel Metrikler (KPI Cards)
-                toplam_talep = len(df_rapor)
-                cozulen_talep = len(df_rapor[df_rapor['durum'] == "Çözüldü - Kapatıldı"])
-                bekleyen_talep = len(df_rapor[df_rapor['durum'].str.contains("Yeni|İnceleme", na=False)])
-                reddedilen_talep = len(df_rapor[df_rapor['durum'].str.contains("Reddedildi", na=False)])
+            try:
+                df_rapor = conn.query("SELECT * FROM talepler;", ttl=0)
                 
-                col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-                col_m1.metric("Toplam Talep", toplam_talep)
-                col_m2.metric("Çözülen / Kapatılan", cozulen_talep)
-                col_m3.metric("İncelemedeki / Bekleyen", bekleyen_talep)
-                col_m4.metric("Reddedilen / Yersiz", reddedilen_talep)
-                
-                st.markdown("---")
-                
-                # 🤖 YAPAY ZEKA STRATEJİK ÖZET MOTORU
-                st.subheader("🤖 Yapay Zeka Destekli Stratejik Yönetici Özeti")
-                
-                # En çok talep gelen alt bölümü bulma
-                en_cok_birim = "Fen İşleri Müdürlüğü"
-                if 'alt_bolum' in df_rapor.columns and not df_rapor['alt_bolum'].dropna().empty:
-                    en_cok_birim = df_rapor['alt_bolum'].mode()[0]
-                
-                basari_orani = int((cozulen_talep / toplam_talep * 100)) if toplam_talep > 0 else 0
-                
-                ai_ozet_metni = f"""
-                > **💡 Başkanlık ve Birim Amirliği Akıllı Sentezi:**
-                > Sistemde kayıtlı toplam **{toplam_talep}** bildirim incelenmiştir. Bildirimlerin genel operasyonel başarı ve kapatılma oranı **%{basari_orani}** seviyesindedir. 
-                > Yoğunluk analizine göre en fazla talep alan sorumlu birim **{en_cok_birim}** olarak öne çıkmaktadır. Kırsal mahallelerden gelen taleplerin coğrafi kümelenme gösterdiği, özellikle altyapı ve yol bozuklukları kategorisinde vatandaş bildirimlerinin ağırlık kazandığı tespit edilmiştir. 
-                > **Öneri:** Kaynakların ve saha ekiplerinin en çok talep gelen hatlara yönlendirilmesi, ortalama çözüm süresini (SLA) optimize edecek ve vatandaş memnuniyetini maksimize edecektir.
-                """
-                st.markdown(ai_ozet_metni)
-                
-                st.markdown("---")
-                
-                # Grafikler ve Dağılımlar
-                col_g1, col_g2 = st.columns(2)
-                
-                with col_g1:
-                    st.markdown("#### 📂 Sorumlu Birimlere Göre İş Yükü Dağılımı")
-                    if 'alt_bolum' in df_rapor.columns:
-                        birim_counts = df_rapor['alt_bolum'].value_counts()
-                        st.bar_chart(birim_counts)
-                
-                with col_g2:
-                    st.markdown("#### 🏷️ Kategori Bazlı Dağılım")
-                    if 'alt_kategori' in df_rapor.columns:
-                        kat_counts = df_rapor['alt_kategori'].value_counts()
-                        st.bar_chart(kat_counts)
-                        
-                st.markdown("---")
-                st.markdown("#### 📋 Detaylı Operasyon Veri Tablosu")
-                st.dataframe(df_rapor[['talep_id', 'ad_soyad', 'alt_bolum', 'alt_kategori', 'durum', 'olusturma_tarihi', 'cozum_tarihi']], use_container_width=True)
-                
-            else:
-                st.info("📊 Rapor oluşturulabilecek henüz kayıtlı talep bulunmamaktadır. İlk talebi oluşturarak analitiği başlatabilirsiniz.")
-        except Exception as e:
-            st.error(f"Raporlar yüklenirken veri tabanı hatası oluştu: {e}")
-    else:
-        st.error("Veritabanı bağlantısı kurulamadığı için raporlar yüklenemedi.")
+                if not df_rapor.empty:
+                    toplam_talep = len(df_rapor)
+                    cozulen_talep = len(df_rapor[df_rapor['durum'] == "Çözüldü - Kapatıldı"])
+                    bekleyen_talep = len(df_rapor[df_rapor['durum'].str.contains("Yeni|İnceleme", na=False)])
+                    reddedilen_talep = len(df_rapor[df_rapor['durum'].str.contains("Reddedildi", na=False)])
+                    
+                    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+                    col_m1.metric("Toplam Talep", toplam_talep)
+                    col_m2.metric("Çözülen / Kapatılan", cozulen_talep)
+                    col_m3.metric("İncelemedeki / Bekleyen", bekleyen_talep)
+                    col_m4.metric("Reddedilen / Yersiz", reddedilen_talep)
+                    
+                    st.markdown("---")
+                    
+                    st.subheader("🤖 Yapay Zeka Destekli Stratejik Yönetici Özeti")
+                    
+                    en_cok_birim = "Fen İşleri Müdürlüğü"
+                    if 'alt_bolum' in df_rapor.columns and not df_rapor['alt_bolum'].dropna().empty:
+                        en_cok_birim = df_rapor['alt_bolum'].mode()[0]
+                    
+                    basari_orani = int((cozulen_talep / toplam_talep * 100)) if toplam_talep > 0 else 0
+                    
+                    ai_ozet_metni = f"""
+                    > **💡 Başkanlık ve Birim Amirliği Akıllı Sentezi:**
+                    > Sistemde kayıtlı toplam **{toplam_talep}** bildirim incelenmiştir. Bildirimlerin genel operasyonel başarı ve kapatılma oranı **%{basari_orani}** seviyesindedir. 
+                    > Yoğunluk analizine göre en fazla talep alan sorumlu birim **{en_cok_birim}** olarak öne çıkmaktadır. Kırsal mahallelerden gelen taleplerin coğrafi kümelenme gösterdiği, özellikle altyapı ve yol bozuklukları kategorisinde vatandaş bildirimlerinin ağırlık kazandığı tespit edilmiştir. 
+                    > **Öneri:** Kaynakların ve saha ekiplerinin en çok talep gelen hatlara yönlendirilmesi, ortalama çözüm süresini (SLA) optimize edecek ve vatandaş memnuniyetini maksimize edecektir.
+                    """
+                    st.markdown(ai_ozet_metni)
+                    
+                    st.markdown("---")
+                    
+                    col_g1, col_g2 = st.columns(2)
+                    
+                    with col_g1:
+                        st.markdown("#### 📂 Sorumlu Birimlere Göre İş Yükü Dağılımı")
+                        if 'alt_bolum' in df_rapor.columns:
+                            birim_counts = df_rapor['alt_bolum'].value_counts()
+                            st.bar_chart(birim_counts)
+                    
+                    with col_g2:
+                        st.markdown("#### 🏷️ Kategori Bazlı Dağılım")
+                        if 'alt_kategori' in df_rapor.columns:
+                            kat_counts = df_rapor['alt_kategori'].value_counts()
+                            st.bar_chart(kat_counts)
+                            
+                    st.markdown("---")
+                    st.markdown("#### 📋 Detaylı Operasyon Veri Tablosu")
+                    st.dataframe(df_rapor[['talep_id', 'ad_soyad', 'alt_bolum', 'alt_kategori', 'durum', 'olusturma_tarihi', 'cozum_tarihi']], use_container_width=True)
+                    
+                else:
+                    st.info("📊 Rapor oluşturulabilecek henüz kayıtlı talep bulunmamaktadır.")
+            except Exception as e:
+                st.error(f"Raporlar yüklenirken veri tabanı hatası oluştu: {e}")
