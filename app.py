@@ -528,7 +528,7 @@ with tab2:
 
                     with st.form(key=f"form_{talep['talep_id']}_{idx}"):
                         yeni_durum = st.selectbox("Talep İnceleme ve Durum Güncelle", durumlar, index=durum_index, key=f"durum_sel_{talep['talep_id']}_{idx}")
-                        atanacak_kisi = st.selectbox("Saha Personeli Ata", personeller, index=personel_index, key=f5 := f"personel_sel_{talep['talep_id']}_{idx}")
+                        atanacak_kisi = st.selectbox("Saha Personeli Ata", personeller, index=personel_index, key=f"personel_sel_{talep['talep_id']}_{idx}")
                         yonetici_notu_input = st.text_area("Yönetici Notu veya Red Gerekçesi Yazın", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
                         saha_fotograf_yukleme = st.file_uploader("Sahadan Çözüm Fotoğrafı Yükle", type=["jpg", "jpeg", "png"], key=f"saha_foto_up_{talep['talep_id']}_{idx}")
                         
