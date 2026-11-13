@@ -33,7 +33,7 @@ kurumlar_listesi = [
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Zabıta / Çevre Koruma"},
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Temizlik İşleri Müdürlüğü"},
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Park ve Bahçeler Müdürlüğü"},
-    {"kurum_adi": "Aydın Su dan Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
+    {"kurum_adi": "Aydın Su ve Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
     {"kurum_adi": "Aydem Elektrik", "alt_bolum": "Elektrik Dağıtım Birimi"},
     {"kurum_adi": "Enerya Doğalgaz", "alt_bolum": "Doğalgaz Acil Servis"}
 ]
@@ -274,7 +274,7 @@ with tab2:
         if is_super_admin:
             st.markdown("---")
             st.subheader("👑 Süper Admin - Platform Yönetim Paneli")
-            st.info("Platform Sahibi olarak yalnızca paydaş kurumları, alt birimleri ve bu birimlerin kurum yöneticilerini (müdürlerini) veritabanı üzerinden yönetebilirsiniz.")
+            st.info("Platform Sahibi olarak paydaş kurumları, alt birimleri ve bu birimlerin yöneticilerini yönetebilir, mükerrer kayıtları silebilirsiniz.")
             
             admin_secim = st.radio(
                 "Yönetim İşlemi Seçin:", 
@@ -295,13 +295,28 @@ with tab2:
                         kurum_adi = kurum["kurum_adi"]
                         birim_adi = kurum["alt_bolum"]
                         
-                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim") == birim_adi]
+                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim"] == birim_adi]
                         
                         with st.expander(f"🏛️ {kurum_adi} ➔ {birim_adi}"):
                             if ilgili_yetkililer:
                                 st.markdown("**Atanmış Kurum Yöneticileri:**")
                                 for y in ilgili_yetkililer:
-                                    st.write(f"- 👤 **{y['ad_soyad']}** | Tel: `{y.get('telefon_no')}` | Unvan: *{y['unvan']}*")
+                                    col_info, col_del = st.columns([4, 1])
+                                    with col_info:
+                                        st.write(f"- 👤 **{y['ad_soyad']}** | Tel: `{y.get('telefon_no')}` | Unvan: *{y['unvan']}*")
+                                    with col_del:
+                                        if st.button("🗑️ Sil", key=f"del_sup_{y.get('telefon_no')}_{y.get('ad_soyad')}"):
+                                            try:
+                                                with conn.session as s:
+                                                    s.execute(
+                                                        text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"),
+                                                        {"tel": y.get('telefon_no'), "ad": y.get('ad_soyad')}
+                                                    )
+                                                    s.commit()
+                                                st.success(f"✅ {y['ad_soyad']} başarıyla silindi!")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Silme hatası: {e}")
                             else:
                                 st.warning("⚠️ Bu birime henüz kurum yöneticisi atanmamış.")
                 except Exception as e:
@@ -350,16 +365,32 @@ with tab2:
             st.markdown("---")
             st.subheader(f"📋 {personel['sorumlu_birim']} - Kurum Operasyon Paneli")
             st.info("Kurum yöneticisi olarak biriminize gelen talepleri inceleyebilir, saha personellerinize yönlendirebilir ve süreçleri kapatabilirsiniz.")
+            
             # --- BİRİM PERSONEL YÖNETİMİ ---
             with st.expander("👥 Birim Saha Personelleri ve Yeni Personel Ekle"):
-                st.markdown(f"**{personel['sorumlu_birim']}** biriminize bağlı saha personellerini buradan ekleyebilir ve listeleyebilirsiniz.")
+                st.markdown(f"**{personel['sorumlu_birim']}** biriminize bağlı saha personellerini buradan yönetebilir veya silebilirsiniz.")
                 
                 try:
                     df_birim_pers = conn.query("SELECT * FROM personeller WHERE sorumlu_birim = :birim;", params={"birim": personel['sorumlu_birim']}, ttl=0)
                     if not df_birim_pers.empty:
                         st.markdown("**Mevcut Birim Personelleri:**")
                         for _, bp in df_birim_pers.iterrows():
-                            st.write(f"- 👤 **{bp['ad_soyad']}** | Tel: `{bp.get('telefon_no')}` | Unvan: *{bp['unvan']}*")
+                            c_info, c_del = st.columns([4, 1])
+                            with c_info:
+                                st.write(f"- 👤 **{bp['ad_soyad']}** | Tel: `{bp.get('telefon_no')}` | Unvan: *{bp['unvan']}*")
+                            with c_del:
+                                if st.button("🗑️ Sil", key=f"del_birim_{bp.get('telefon_no')}_{bp.get('ad_soyad')}"):
+                                    try:
+                                        with conn.session as s:
+                                            s.execute(
+                                                text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"),
+                                                {"tel": bp.get('telefon_no'), "ad": bp.get('ad_soyad')}
+                                            )
+                                            s.commit()
+                                        st.success(f"✅ {bp['ad_soyad']} silindi!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Personel silinirken hata: {e}")
                     else:
                         st.info("Bu birime kayıtlı henüz personel bulunmamaktadır.")
                 except Exception as e:
