@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
+from fpdf import FPDF
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Akıllı Kent ve Saha Yönetimi", layout="centered", page_icon="🏙️")
@@ -52,6 +53,108 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
+# --- TÜRKÇE KARAKTER DÖNÜŞTÜRÜCÜ & PDF OLUŞTURMA MOTORU ---
+def tr_temizle(metin):
+    if not metin:
+        return ""
+    ceviri = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+    return str(metin).translate(ceviri)
+
+def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok_birim, basari_orani, raporlayan_kisi, raporlayan_birim):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Üst Kurumsal Başlık Bandı
+    pdf.set_fill_color(15, 23, 42) # Koyu Lacivert
+    pdf.rect(0, 0, 210, 35, 'F')
+    
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.set_xy(10, 10)
+    pdf.cell(0, 8, tr_temizle("KENTASISTAN - AKILLI KENT VE SAHA YONETIMI"), ln=True)
+    
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_x(10)
+    pdf.cell(0, 6, tr_temizle("Yonetici Performans, Denetim ve Yapay Zeka Stratejik Analiz Raporu"), ln=True)
+    
+    # Rapor Üst Bilgileri
+    pdf.set_text_color(30, 41, 59)
+    pdf.set_xy(10, 42)
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(0, 6, tr_temizle(f"Rapor Tarihi: {datetime.now().strftime('%d.%m.%Y %H:%M')}"), ln=True)
+    pdf.cell(0, 6, tr_temizle(f"Duzenleyen Yetkili: {raporlayan_kisi} ({raporlayan_birim})"), ln=True)
+    pdf.ln(4)
+    
+    # 1. Bölüm: Operasyonel KPI Özeti
+    pdf.set_fill_color(241, 245, 249)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 9, tr_temizle(" 1. OPERASYONEL PERFORMANS OZETI (KPI)"), ln=True, fill=True)
+    pdf.ln(3)
+    
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(95, 7, tr_temizle(f"- Toplam Gelen Bildirim Sayisi: {toplam}"), border=1)
+    pdf.cell(95, 7, tr_temizle(f"- Cozulen / Kapatilan Talep: {cozulen}"), border=1, ln=True)
+    pdf.cell(95, 7, tr_temizle(f"- Incelemede / Bekleyen Talep: {bekleyen}"), border=1)
+    pdf.cell(95, 7, tr_temizle(f"- Reddedilen / Yersiz Talep: {reddedilen}"), border=1, ln=True)
+    pdf.ln(6)
+    
+    # 2. Bölüm: Yapay Zeka Stratejik Sentezi
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 9, tr_temizle(" 2. YAPAY ZEKA DESTEKLI STRATEJIK YONETICI OZETI"), ln=True, fill=True)
+    pdf.ln(3)
+    
+    pdf.set_font("Helvetica", "", 10)
+    ozet_1 = f"* Genel Operasyonel Basari Orani: %{basari_orani} seviyesindedir."
+    ozet_2 = f"* En Yogun Birim Analizi: Sistemdeki veriler incelendiginde en fazla talep alan birim '{en_cok_birim}' olarak tespit edilmistir."
+    ozet_3 = "* Cografi Kumelenme ve Eylem Onerisi: Kirsal mahalleler ve ilce merkezinden gelen altyapi/yol bildirimlerinin harita uzerinde kumelendigi gorulmektedir. Saha ekiplerinin ve arac rotalarinin en yogun hatlara kaydirilmasi ortalama cozum suresini (SLA) kisaltacaktir."
+    
+    pdf.multi_cell(0, 6, tr_temizle(ozet_1))
+    pdf.ln(1)
+    pdf.multi_cell(0, 6, tr_temizle(ozet_2))
+    pdf.ln(1)
+    pdf.multi_cell(0, 6, tr_temizle(ozet_3))
+    pdf.ln(6)
+    
+    # 3. Bölüm: Birim İş Yükü Dağılımı
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 9, tr_temizle(" 3. BIRIMLERE GORE IS YUKU DAGILIMI"), ln=True, fill=True)
+    pdf.ln(3)
+    
+    pdf.set_font("Helvetica", "", 10)
+    if 'alt_bolum' in df_rapor.columns:
+        birim_sayilari = df_rapor['alt_bolum'].value_counts()
+        for birim, sayi in birim_sayilari.items():
+            pdf.cell(0, 6, tr_temizle(f"- {birim}: {sayi} adet talep"), ln=True)
+    pdf.ln(6)
+    
+    # 4. Bölüm: Son İşlem Gören Talepler Tablosu
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 9, tr_temizle(" 4. DENETIM IZI VE SON TALEPLER LISTESI"), ln=True, fill=True)
+    pdf.ln(3)
+    
+    # Tablo Başlığı
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_fill_color(226, 232, 240)
+    pdf.cell(28, 7, "Talep ID", border=1, fill=True)
+    pdf.cell(52, 7, tr_temizle("Alt Kategori"), border=1, fill=True)
+    pdf.cell(50, 7, tr_temizle("Sorumlu Birim"), border=1, fill=True)
+    pdf.cell(60, 7, tr_temizle("Mevcut Durum"), border=1, fill=True, ln=True)
+    
+    # Tablo Satırları (Son 15 kayıt)
+    pdf.set_font("Helvetica", "", 8)
+    for _, row in df_rapor.tail(15).iterrows():
+        t_id = tr_temizle(row.get('talep_id', ''))[:14]
+        alt_k = tr_temizle(row.get('alt_kategori', ''))[:28]
+        birim = tr_temizle(row.get('alt_bolum', ''))[:26]
+        durum = tr_temizle(row.get('durum', ''))[:32]
+        
+        pdf.cell(28, 6, t_id, border=1)
+        pdf.cell(52, 6, alt_k, border=1)
+        pdf.cell(50, 6, birim, border=1)
+        pdf.cell(60, 6, durum, border=1, ln=True)
+        
+    return bytes(pdf.output())
 
 # --- GLOBAL OTURUM HAFIZASI ---
 if "personel_giris" not in st.session_state:
@@ -134,7 +237,7 @@ st.title("🏙️ KentAsistan - Akıllı Kent ve Saha Yönetimi")
 st.markdown("##### *Yenipazar Belediyesi ve Paydaş Kurumlar Ortak Çözüm Masası*")
 st.markdown("---")
 
-# İki Temel Güvenli Sekme (Raporlama Alanı Kurum Paneline Taşındı)
+# İki Temel Güvenli Sekme
 tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Kurum / Yönetim Paneli"])
 
 with tab1:
@@ -643,12 +746,12 @@ with tab2:
                                     st.error(f"Güncelleme hatası: {e}")
 
             # =========================================================================
-            # 📊 GÜVENLİ ALAN: YAPAY ZEKA DESTEKLİ KURUMSAL RAPORLAR VE ANALİZ MERKEZİ
+            # 📊 GÜVENLİ ALAN: YAPAY ZEKA DESTEKLİ KURUMSAL RAPORLAR VE PDF İNDİRME
             # =========================================================================
             st.markdown("---")
             st.markdown("---")
             st.header("📊 Yapay Zeka Destekli Yönetici Raporu ve Analiz Merkezi")
-            st.info("Bu panel yalnızca yetkili yönetici ve amirlerin erişimine açık olup; zaman damgalarını, birim yüklerini ve coğrafi verileri analiz ederek başkanlık makamı için stratejik özetler üretir.")
+            st.info("Bu panel yalnızca yetkili yönetici ve amirlerin erişimine açık olup; zaman damgalarını, birim yüklerini ve coğrafi verileri analiz ederek başkanlık makamı için stratejik özetler ve resmi PDF çıktıları üretir.")
             
             try:
                 df_rapor = conn.query("SELECT * FROM talepler;", ttl=0)
@@ -682,6 +785,28 @@ with tab2:
                     > **Öneri:** Kaynakların ve saha ekiplerinin en çok talep gelen hatlara yönlendirilmesi, ortalama çözüm süresini (SLA) optimize edecek ve vatandaş memnuniyetini maksimize edecektir.
                     """
                     st.markdown(ai_ozet_metni)
+                    
+                    # --- RESMİ PDF RAPOR İNDİRME BUTONU ---
+                    st.markdown("### 📄 Kurumsal Rapor Çıktısı")
+                    pdf_bytes = yonetici_pdf_olustur(
+                        df_rapor=df_rapor,
+                        toplam=toplam_talep,
+                        cozulen=cozulen_talep,
+                        bekleyen=bekleyen_talep,
+                        reddedilen=reddedilen_talep,
+                        en_cok_birim=en_cok_birim,
+                        basari_orani=basari_orani,
+                        raporlayan_kisi=personel['ad_soyad'],
+                        raporlayan_birim=personel['sorumlu_birim']
+                    )
+                    
+                    st.download_button(
+                        label="📥 Resmi Yönetici Raporunu PDF Olarak İndir",
+                        data=pdf_bytes,
+                        file_name=f"KentAsistan_Yonetici_Raporu_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                        mime="application/pdf",
+                        type="primary"
+                    )
                     
                     st.markdown("---")
                     
