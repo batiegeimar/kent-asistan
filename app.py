@@ -295,7 +295,7 @@ with tab2:
                         kurum_adi = kurum["kurum_adi"]
                         birim_adi = kurum["alt_bolum"]
                         
-                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim"] == birim_adi]
+                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim") == birim_adi]
                         
                         with st.expander(f"🏛️ {kurum_adi} ➔ {birim_adi}"):
                             if ilgili_yetkililer:
