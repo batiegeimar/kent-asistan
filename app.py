@@ -65,7 +65,7 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf = FPDF()
     pdf.add_page()
     
-    # Üst Kurumsal Başlık Bandı
+    # Üst Kurumsal Başlık Bandı (Emojisiz)
     pdf.set_fill_color(15, 23, 42) # Koyu Lacivert
     pdf.rect(0, 0, 210, 35, 'F')
     
@@ -105,9 +105,9 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.ln(3)
     
     pdf.set_font("Helvetica", "", 10)
-    ozet_1 = f"* Genel Operasyonel Basari Orani: %{basari_orani} seviyesindedir."
-    ozet_2 = f"* En Yogun Birim Analizi: Sistemdeki veriler incelendiginde en fazla talep alan birim '{en_cok_birim}' olarak tespit edilmistir."
-    ozet_3 = "* Cografi Kumelenme ve Eylem Onerisi: Kirsal mahalleler ve ilce merkezinden gelen altyapi/yol bildirimlerinin harita uzerinde kumelendigi gorulmektedir. Saha ekiplerinin ve arac rotalarinin en yogun hatlara kaydirilmasi ortalama cozum suresini (SLA) kisaltacaktir."
+    ozet_1 = f"- Genel Operasyonel Basari Orani: %{basari_orani} seviyesindedir."
+    ozet_2 = f"- En Yogun Birim Analizi: Sistemdeki veriler incelendiginde en fazla talep alan birim '{en_cok_birim}' olarak tespit edilmistir."
+    ozet_3 = "- Cografi Kumelenme ve Eylem Onerisi: Kirsal mahalleler ve ilce merkezinden gelen altyapi/yol bildirimlerinin harita uzerinde kumelendigi gorulmektedir. Saha ekiplerinin ve arac rotalarinin en yogun hatlara kaydirilmasi ortalama cozum suresini (SLA) kisaltacaktir."
     
     pdf.multi_cell(0, 6, tr_temizle(ozet_1))
     pdf.ln(1)
