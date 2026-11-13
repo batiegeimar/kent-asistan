@@ -445,7 +445,7 @@ with tab2:
                 sup_talepler = []
                 st.error(f"Talepler yüklenirken hata: {e}")
 
-            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum'] == personel['sorumlu_birim']]
+            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum') == personel['sorumlu_birim']]
             
             if not gosterilecek_talepler:
                 st.info("Biriminize ait aktif talep bulunmamaktadır.")
