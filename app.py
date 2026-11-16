@@ -17,7 +17,7 @@ import os
 APP_BASE_URL = "https://kent-asistan-bpcusdhobee6vqmjbrcsxe.streamlit.app"
 
 # Sayfa Yapılandırması ve Kurumsal Logo İkonu Entegrasyonu
-ikon_yolu = "logo.jpeg" if os.path.exists("logo.jpeg") else "🏙️"
+ikon_yolu = "logo.jpg" if os.path.exists("logo.jpg") else "🏙️"
 
 st.set_page_config(
     page_title="KentAsistan - Akıllı Kent ve Saha Yönetimi",
