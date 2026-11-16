@@ -414,55 +414,64 @@ with tab1:
                 else:
                     st.error("Veritabanı bağlantısı kurulamadı.")
 
+# =========================================================================
+# 🔍 2. SEKME: GÜVENLİ VATANDAŞ TALEP VE SÜREÇ TAKİP MERKEZİ
+# =========================================================================
 with tab2:
-    st.header("Vatandaş Şeffaf Talep ve Süreç Takip Merkezi")
-    st.info("Takip numaranızla (Örn: KENT-12345) talebinizin hangi birimde olduğunu, hangi saha personeline atandığını ve tüm zaman damgalarını şeffafça takip edebilirsiniz.")
+    st.header("Güvenli Vatandaş Talep ve Süreç Takip Merkezi")
+    st.info("KVKK ve veri gizliliği gereği, talebinizin güncel aşamasını güvenle görebilmeniz için hem **Takip Numaranızı** hem de kayıt esnasında bildirdiğiniz **Telefon Numaranızı** girmeniz gerekmektedir.")
     
-    sorgu_id = st.text_input("Talep Takip Numarasını Giriniz (Örn: KENT-XXXXX)", key="vat_sorgu_input")
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        sorgu_id = st.text_input("Talep Takip Numarası (Örn: KENT-XXXXX)", key="vat_sorgu_id")
+    with col_s2:
+        sorgu_tel = st.text_input("Kayıtlı Telefon Numaranız (Örn: 0555...)", key="vat_sorgu_tel")
     
-    if st.button("Talebi Sorgula", key="talep_sorgula_btn", type="primary"):
-        if sorgu_id:
+    if st.button("Güvenli Sorgula", key="guvenli_sorgula_btn", type="primary"):
+        if sorgu_id and sorgu_tel:
             try:
-                df_sorgu = conn.query("SELECT * FROM talepler WHERE talep_id = :tid;", params={"tid": sorgu_id.strip()}, ttl=0)
+                clean_sorgu_tel = sorgu_tel.strip().replace(" ", "")
+                q_guvenli = "SELECT * FROM talepler WHERE talep_id = :tid AND telefon_no = :tel;"
+                df_sorgu = conn.query(q_guvenli, params={"tid": sorgu_id.strip(), "tel": clean_sorgu_tel}, ttl=0)
+                
                 if not df_sorgu.empty:
                     t = df_sorgu.iloc[0].to_dict()
-                    st.success(f"Talep Bulundu: {t['talep_id']} ({t['alt_kategori']})")
+                    st.success(f"Doğrulama Başarılı! Talep: {t['talep_id']} ({t['alt_kategori']})")
                     
-                    st.markdown("### Süreç Akışı ve Denetim İzi (Şeffaf Takip)")
-                    
-                    st.markdown(f"1. **Talep Oluşturma:** `{t.get('olusturma_tarihi', '-')}` tarihinde vatandaş tarafından oluşturuldu ve **{t.get('alt_bolum')}** ({t.get('sorumlu_kurum')}) birimine iletildi.")
-                    st.markdown(f"2. **Yönetici / Müdür İncelemesi:** Mevcut Durum: **{t.get('durum')}**")
-                    st.markdown(f"3. **Saha Personeli Ataması:** Atanan Personel: **{t.get('atanan_personel')}** (Sevk Zamanı / Güncelleme: `{t.get('guncelleme_tarihi', '-')}`)")
-                    st.markdown(f"4. **Çözüm ve Kapatılma Zamanı:** `{t.get('cozum_tarihi', 'Henüz tamamlanmadı')}`")
+                    st.markdown("### 🕒 Şeffaf Süreç Akışı ve Denetim İzi")
+                    st.markdown(f"1. **Talep Oluşturma:** `{t.get('olusturma_tarihi', '-')}` tarihinde tarafınızdan oluşturuldu ve **{t.get('alt_bolum')}** ({t.get('sorumlu_kurum')}) birimine iletildi.")
+                    st.markdown(f"2. **Kurum İncelemesi:** Mevcut Durum: **{t.get('durum')}**")
+                    st.markdown(f"3. **Saha Ekibi Sevk:** Atanan Sorumlu: **{t.get('atanan_personel')}** (Sevk Zamanı: `{t.get('guncelleme_tarihi', '-')}`)")
+                    st.markdown(f"4. **Çözüm ve Kapanış:** `{t.get('cozum_tarihi', 'Sahada işlem devam ediyor')}`")
                     
                     if t.get('yönetici_notu') and t.get('yönetici_notu') != "Henüz not eklenmedi":
                         st.info(f"**Kurum / Müdür Notu:** {t.get('yönetici_notu')}")
                         
                     c_f1, c_f2 = st.columns(2)
                     with c_f1:
-                        st.markdown("**Vatandaş Bildirim Fotoğrafı:**")
+                        st.markdown("**Bildirim Fotoğrafınız:**")
                         if t.get('fotograf_b64'):
                             try:
-                                st.image(Image.open(io.BytesIO(base64.b64decode(t['fotograf_b64']))), caption="Vatandaş Görseli", use_container_width=True)
+                                st.image(Image.open(io.BytesIO(base64.b64decode(t['fotograf_b64']))), caption="Yüklediğiniz Görsel", use_container_width=True)
                             except:
                                 st.write("Görsel yüklenemedi.")
                         else:
-                            st.write("Fotoğraf yok.")
+                            st.write("Fotoğraf yüklememiştiniz.")
                     with c_f2:
-                        st.markdown("**Saha Çözüm Bitiş Fotoğrafı:**")
+                        st.markdown("**Saha Çözüm Kanıt Fotoğrafı:**")
                         if t.get('saha_fotograf_b64'):
                             try:
-                                st.image(Image.open(io.BytesIO(base64.b64decode(t['saha_fotograf_b64']))), caption="Saha Çözüm Görseli", use_container_width=True)
+                                st.image(Image.open(io.BytesIO(base64.b64decode(t['saha_fotograf_b64']))), caption="Çözüm Görseli", use_container_width=True)
                             except:
-                                st.write("Saha görseli yüklenemedi.")
+                                st.write("Saha görseli çözülemedi.")
                         else:
-                            st.write("Saha personeli henüz çözüm fotoğrafı yüklemedi.")
+                            st.info("Saha ekibi henüz çözüm fotoğrafı yüklemedi veya inceleme aşamasında.")
                 else:
-                    st.warning("Bu takip numarasına ait kayıt bulunamadı.")
+                    st.error("❌ Girdiğiniz Takip Numarası ile Telefon Numarası eşleşmedi! Lütfen bilgilerinizi kontrol ediniz.")
             except Exception as e:
-                st.error(f"Sorgulama hatası: {e}")
+                st.error(f"Sorgulama sırasında hata oluştu: {e}")
         else:
-            st.warning("Lütfen bir takip numarası girin.")
+            st.warning("⚠️ Lütfen hem takip numaranızı hem de telefon numaranızı eksiksiz girin.")
 
 with tab3:
     st.header("Kurum ve Personel Giriş Paneli")
