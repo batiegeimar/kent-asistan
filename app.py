@@ -690,7 +690,7 @@ with tab3:
                     st.markdown("---")
                     st.markdown("**Sahada Yapılan İşi Kanıtlama (Çözüm Fotoğrafı Yükle):**")
                     
-                    saha_foto_yukle = st.file_uploader("Çözüm Sonrası Fotoğraf Çek / Yükle", type=["jpg", "jpeg", "png"], key=f"saha_up_{gorev['talep_id']}_{idx}")
+                    saha_foto_yukle = st.camera_input("📸 Çözüm Sonrası Canlı Fotoğraf Çek", key=f"saha_up_{gorev['talep_id']}_{idx}")
                     
                     if st.button(f"✅ İşi Tamamla ve Müdüre Gönder ({gorev['talep_id']})", key=f"saha_gonder_{gorev['talep_id']}_{idx}", type="primary", use_container_width=True):
                         if saha_foto_yukle is not None:
