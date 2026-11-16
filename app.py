@@ -886,7 +886,8 @@ with tab3:
                         data=pdf_bytes,
                         file_name=f"KentAsistan_Yonetici_Raporu_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
                         mime="application/pdf",
-                        type="primary"
+                        type="primary",
+                        key="yonetici_pdf_indir_btn"
                     )
                     
                     st.markdown("---")
@@ -909,78 +910,4 @@ with tab3:
                     st.info("Rapor oluşturulabilecek henüz kayıtlı talep bulunmamaktadır.")
             except Exception as e:
                 st.error(f"Raporlar yüklenirken veri tabanı hatası oluştu: {e}")
-            
-            try:
-                df_rapor = conn.query("SELECT * FROM talepler;", ttl=0)
-                
-                if not df_rapor.empty:
-                    toplam_talep = len(df_rapor)
-                    cozulen_talep = len(df_rapor[df_rapor['durum'] == "Çözüldü - Kapatıldı"])
-                    bekleyen_talep = len(df_rapor[df_rapor['durum'].str.contains("Yeni|İnceleme", na=False)])
-                    reddedilen_talep = len(df_rapor[df_rapor['durum'].str.contains("Reddedildi", na=False)])
-                    
-                    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-                    col_m1.metric("Toplam Talep", toplam_talep)
-                    col_m2.metric("Çözülen / Kapatılan", cozulen_talep)
-                    col_m3.metric("İncelemedeki / Bekleyen", bekleyen_talep)
-                    col_m4.metric("Reddedilen / Yersiz", reddedilen_talep)
-                    
-                    st.markdown("---")
-                    
-                    st.subheader("Yapay Zeka Destekli Stratejik Yönetici Özeti")
-                    
-                    en_cok_birim = "Fen İşleri Müdürlüğü"
-                    if 'alt_bolum' in df_rapor.columns and not df_rapor['alt_bolum'].dropna().empty:
-                        en_cok_birim = df_rapor['alt_bolum'].mode()[0]
-                    
-                    basari_orani = int((cozulen_talep / toplam_talep * 100)) if toplam_talep > 0 else 0
-                    
-                    ai_ozet_metni = f"""
-                    > **Başkanlık ve Birim Amirliği Akıllı Sentezi:**
-                    > Sistemde kayıtlı toplam **{toplam_talep}** bildirim incelenmiştir. Genel operasyonel başarı ve kapatılma oranı **%{basari_orani}** seviyesindedir. 
-                    > En fazla talep alan sorumlu birim **{en_cok_birim}** olarak öne çıkmaktadır. Kırsal mahallelerden gelen taleplerin coğrafi kümelenme gösterdiği, altyapı ve yol bozuklukları kategorisinde yoğunlaştığı tespit edilmiştir. 
-                    > **Öneri:** Kaynakların ve saha ekiplerinin en çok talep gelen hatlara yönlendirilmesi, ortalama çözüm süresini (SLA) optimize edecektir.
-                    """
-                    st.markdown(ai_ozet_metni)
-                    
-                    st.markdown("### Kurumsal Rapor Çıktısı")
-                    pdf_bytes = yonetici_pdf_olustur(
-                        df_rapor=df_rapor,
-                        toplam=toplam_talep,
-                        cozulen=cozulen_talep,
-                        bekleyen=bekleyen_talep,
-                        reddedilen=reddedilen_talep,
-                        en_cok_birim=en_cok_birim,
-                        basari_orani=basari_orani,
-                        raporlayan_kisi=personel['ad_soyad'],
-                        raporlayan_birim=personel['sorumlu_birim']
-                    )
-                    
-                    st.download_button(
-                        label="Resmi Yönetici Raporunu PDF Olarak İndir",
-                        data=pdf_bytes,
-                        file_name=f"KentAsistan_Yonetici_Raporu_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                        mime="application/pdf",
-                        type="primary"
-                    )
-                    
-                    st.markdown("---")
-                    
-                    col_g1, col_g2 = st.columns(2)
-                    with col_g1:
-                        st.markdown("#### Sorumlu Birimlere Göre İş Yükü Dağılımı")
-                        if 'alt_bolum' in df_rapor.columns:
-                            st.bar_chart(df_rapor['alt_bolum'].value_counts())
-                    with col_g2:
-                        st.markdown("#### Kategori Bazlı Dağılım")
-                        if 'alt_kategori' in df_rapor.columns:
-                            st.bar_chart(df_rapor['alt_kategori'].value_counts())
-                            
-                    st.markdown("---")
-                    st.markdown("#### Detaylı Operasyon Veri Tablosu")
-                    st.dataframe(df_rapor[['talep_id', 'ad_soyad', 'alt_bolum', 'alt_kategori', 'durum', 'olusturma_tarihi', 'cozum_tarihi']], use_container_width=True)
-                    
-                else:
-                    st.info("Rapor oluşturulabilecek henüz kayıtlı talep bulunmamaktadır.")
-            except Exception as e:
-                st.error(f"Raporlar yüklenirken veri tabanı hatası oluştu: {e}")
+    
