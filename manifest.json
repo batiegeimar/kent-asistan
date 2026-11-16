@@ -1,0 +1,15 @@
+{
+  "short_name": "KentAsistan",
+  "name": "KentAsistan Akıllı Kent ve Saha Yönetimi",
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
