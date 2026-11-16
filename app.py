@@ -392,7 +392,9 @@ with tab1:
         horizontal=True
     )
     
-    fotograf = st.camera_input("📸 Hasarlı Bölgenin Fotoğrafını Çek (Opsiyonel - Sadece Canlı Kamera)", key="vat_foto")
+    fotograf = st.camera_input("📸 Hasarlı Bölgenin Canlı Fotoğrafı (Zorunludur) *", key="vat_foto")
+if fotograf is None:
+    st.warning("⚠️ Talebin sisteme kaydedilebilmesi için kameradan canlı hasar görseli çekilmesi zorunludur.")
     aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Mahalle, sokak bilgisi ve sorunu kısaca açıklayınız...", key="vat_aciklama")
     
     gonder_btn = st.button("🚀 Talebi Sisteme Gönder", key="vat_gonder_btn", type="primary", use_container_width=True)
