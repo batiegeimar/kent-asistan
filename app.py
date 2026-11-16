@@ -305,15 +305,13 @@ st.sidebar.markdown("---")
 st.sidebar.info("📱 **Mobil Uygulama İpucu:** Tarayıcı menüsünden *'Ana Ekrana Ekle'* seçeneğine dokunarak KentAsistan'ı telefonunuza uygulama olarak kurabilirsiniz.")
 
 # --- KURUMSAL LOGO VE BAŞLIK ENTEGRASYONU ---
-col_logo, col_baslik = st.columns([1, 4])
+col_logo, col_baslik = st.columns([2, 3])
 with col_logo:
     if os.path.exists("logo.jpeg"):
         st.image("logo.jpeg", use_container_width=True)
 with col_baslik:
     st.title("KentAsistan")
     st.markdown("##### *Akıllı Kent ve Saha Yönetimi | Yenipazar Belediyesi Ortak Çözüm Masası*")
-
-st.markdown("---")
 
 tab1, tab2, tab3 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔍 Talep Sorgula & Şeffaf Takip", "🔒 Kurum / Yönetim Paneli"])
 
