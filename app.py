@@ -26,7 +26,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- PWA (MOBİL UYGULAMA GÖRÜNÜMÜ) & KURUMSAL MOBİL CSS ENJEKSİYONU ---
+def logo_base64_getir(dosya_yolu="logo.jpg"):
+    if os.path.exists(dosya_yolu):
+        with open(dosya_yolu, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
+logo_b64 = logo_base64_getir()
+
+# --- KURUMSAL GOVTECH TASARIM & MOBİL PWA CSS ENJEKSİYONU ---
 st.markdown("""
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -34,36 +42,198 @@ st.markdown("""
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0f172a">
     <style>
-    .main {
-        background-color: #f8fafc;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    h1, h2, h3 {
-        color: #1e293b;
-        font-family: 'Inter', sans-serif;
+
+    /* Streamlit Geliştirici Üst Barı ve Alt Filigranı Gizle */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
     }
+    #MainMenu, footer, .stDeployButton {
+        display: none !important;
+    }
+
+    .stApp {
+        background-color: #f1f5f9;
+    }
+
+    .block-container {
+        padding-top: 1.2rem !important;
+        padding-bottom: 3rem !important;
+        max-width: 780px !important;
+    }
+
+    /* Kurumsal Üst Hero Banner */
+    .kent-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border-radius: 18px;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
+        margin-bottom: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .kent-hero img {
+        width: 84px;
+        height: 84px;
+        object-fit: cover;
+        border-radius: 14px;
+        border: 2px solid rgba(56, 189, 248, 0.35);
+        flex-shrink: 0;
+    }
+    .kent-hero-text h1 {
+        color: #ffffff !important;
+        font-size: 1.65rem !important;
+        font-weight: 700 !important;
+        margin: 0 0 4px 0 !important;
+        padding: 0 !important;
+        letter-spacing: -0.02em;
+    }
+    .kent-hero-text p {
+        color: #cbd5e1 !important;
+        font-size: 0.9rem !important;
+        margin: 0 0 8px 0 !important;
+        line-height: 1.4;
+    }
+    .kent-badge {
+        display: inline-block;
+        background: rgba(2, 132, 199, 0.25);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 999px;
+        letter-spacing: 0.03em;
+    }
+
+    /* Modern Sekme (Tab) Tasarımı */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #e2e8f0;
+        padding: 6px;
+        border-radius: 14px;
+        margin-bottom: 16px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 44px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.88rem;
+        color: #475569;
+        padding: 0 14px;
+        border: none !important;
+        background-color: transparent;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+    }
+    .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {
+        display: none !important;
+    }
+
+    /* Bölüm Kart Başlıkları */
+    .section-card-header {
+        background: #ffffff;
+        border-left: 4px solid #0284c7;
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin: 14px 0 12px 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .section-card-header h4 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+    .section-card-header span {
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+
+    /* Modern GPS Konum Doğrulama Alanı */
+    .gps-box {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1.5px dashed #0284c7;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+    }
+    .gps-box-title {
+        color: #0369a1;
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+    }
+    .gps-box-desc {
+        color: #334155;
+        font-size: 0.82rem;
+        margin: 0;
+    }
+
+    /* Geolocation Iframe Ölçekleme */
+    iframe[title*="streamlit_geolocation"] {
+        transform: scale(1.28);
+        transform-origin: left center;
+        margin: 6px 0 6px 4px;
+        border-radius: 8px;
+    }
+
+    /* Input & Selectbox İyileştirmeleri */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
+        background-color: #ffffff !important;
+        border-radius: 10px !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* Kurumsal Birincil Butonlar */
+    .stButton>button[kind="primary"], .stDownloadButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] {
+        background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        min-height: 48px !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton>button[kind="primary"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35) !important;
+    }
+
+    .stButton>button, .stDownloadButton>button, .stLinkButton>a {
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        min-height: 46px !important;
+    }
+
     div[data-testid="metric-container"] {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
         padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        border-radius: 14px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
+
     .streamlit-expanderHeader {
-        background-color: #ffffff;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        font-weight: 600;
-        color: #334155;
-        padding: 12px !important;
+        background-color: #ffffff !important;
+        border-radius: 12px !important;
+        border: 1px solid #e2e8f0 !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        padding: 14px !important;
     }
-    /* Mobil cihazlarda parmakla kolay basılabilir butonlar */
-    .stButton>button, .stDownloadButton>button, .stLinkButton>a {
-        border-radius: 10px;
-        font-weight: 600;
-        min-height: 46px;
-        width: 100%;
-        transition: all 0.2s ease;
-    }
+
     [data-testid="stSidebar"] {
         background-color: #0f172a;
         color: #ffffff;
@@ -71,11 +241,25 @@ st.markdown("""
     [data-testid="stSidebar"] .stMarkdown {
         color: #e2e8f0;
     }
-    @media (max-width: 768px) {
-        .block-container {
-            padding-top: 1.5rem !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
+
+    @media (max-width: 640px) {
+        .kent-hero {
+            padding: 16px;
+            gap: 14px;
+        }
+        .kent-hero img {
+            width: 66px;
+            height: 66px;
+        }
+        .kent-hero-text h1 {
+            font-size: 1.35rem !important;
+        }
+        .kent-hero-text p {
+            font-size: 0.8rem !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.78rem;
+            padding: 0 8px;
         }
     }
     </style>
@@ -113,7 +297,7 @@ if "gorsel" in query_params:
                 lon = t_data.get('boylam')
                 if lat and lon:
                     maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-                    st.link_button("🗺️ Google Haritalar'da Yol Tarifi Al", maps_url, type="primary")
+                    st.link_button("🗺️ Google Haritalar'da Yol Tarifi Al", maps_url, type="primary", use_container_width=True)
                 
                 st.markdown("### 📷 Vatandaşın Yüklediği Hasar Fotoğrafı")
                 foto_b64 = t_data.get('fotograf_b64', '')
@@ -127,7 +311,7 @@ if "gorsel" in query_params:
                     st.warning("Vatandaş bu talep için fotoğraf yüklememiş.")
                     
                 st.markdown("---")
-                if st.button("🏠 Ana Uygulamaya / Giriş Ekranına Geç"):
+                if st.button("🏠 Ana Uygulamaya / Giriş Ekranına Geç", use_container_width=True):
                     st.query_params.clear()
                     st.rerun()
             else:
@@ -240,7 +424,6 @@ if "personel_giris" not in st.session_state:
 if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
-# Kurumlar Listesi
 kurumlar_listesi = [
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Fen İşleri Müdürlüğü"},
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Zabıta / Çevre Koruma"},
@@ -304,20 +487,28 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.info("📱 **Mobil Uygulama İpucu:** Tarayıcı menüsünden *'Ana Ekrana Ekle'* seçeneğine dokunarak KentAsistan'ı telefonunuza uygulama olarak kurabilirsiniz.")
 
-# --- KURUMSAL LOGO VE BAŞLIK ENTEGRASYONU ---
-col_logo, col_baslik = st.columns([2, 3])
-with col_logo:
-    if os.path.exists("logo.jpg"):
-        st.image("logo.jpg", use_container_width=True)
-with col_baslik:
-    st.title("KentAsistan")
-    st.markdown("##### *Akıllı Kent ve Saha Yönetimi | Yenipazar Belediyesi Ortak Çözüm Masası*")
+# --- KURUMSAL KOYU LACİVERT ÜST HERO BANNER ---
+img_html = f'<img src="data:image/jpeg;base64,{logo_b64}" alt="KentAsistan Logo">' if logo_b64 else ''
+st.markdown(f"""
+    <div class="kent-hero">
+        {img_html}
+        <div class="kent-hero-text">
+            <span class="kent-badge">🏛️ YENİPAZAR BELEDİYESİ ORTAK ÇÖZÜM MASASI</span>
+            <h1>KentAsistan</h1>
+            <p>Akıllı Kent, CBS Konum Doğrulamalı Talep ve Saha Yönetim Sistemi</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔍 Talep Sorgula & Şeffaf Takip", "🔒 Kurum / Yönetim Paneli"])
+tab1, tab2, tab3 = st.tabs(["📝 Talep Bildir", "🔍 Talep Sorgula", "🔒 Kurum Paneli"])
 
 with tab1:
-    st.header("Yeni Talep Oluştur")
-    st.write("Kırsal mahalleler ve merkez dahil tüm vatandaşlarımız için hızlı bildirim portalı.")
+    st.markdown("""
+        <div class="section-card-header">
+            <h4>1. Bildirim ve İletişim Bilgileri</h4>
+            <span>Kırsal mahalleler ve merkez dahil tüm vatandaşlarımız için hızlı bildirim portalı</span>
+        </div>
+    """, unsafe_allow_html=True)
     
     col_il1, col_il2 = st.columns(2)
     with col_il1:
@@ -328,36 +519,71 @@ with tab1:
     if secilen_ilce != "Yenipazar":
         st.warning("KentAsistan şu an yalnızca **Yenipazar** ilçesinde aktif olarak hizmet vermektedir.")
     
-    tc_kimlik = st.text_input("TC Kimlik Numarası (Opsiyonel)", key="vat_tc")
-    ad_soyad = st.text_input("Ad Soyad *", key="vat_ad")
-    telefon = st.text_input("Telefon Numarası (Örn: 0555...) *", key="vat_tel")
+    col_k1, col_k2 = st.columns(2)
+    with col_k1:
+        ad_soyad = st.text_input("Ad Soyad *", placeholder="Örn: Ahmet Yılmaz", key="vat_ad")
+    with col_k2:
+        telefon = st.text_input("Telefon Numarası *", placeholder="Örn: 0555 123 45 67", key="vat_tel")
+        
+    tc_kimlik = st.text_input("TC Kimlik Numarası (Opsiyonel)", placeholder="İsteğe bağlı girebilirsiniz", key="vat_tc")
     
-    secilen_ana_kategori = st.selectbox("Ana Kategori", options=ana_kategoriler, key="ana_kat_secim")
+    col_kat1, col_kat2 = st.columns(2)
+    with col_kat1:
+        secilen_ana_kategori = st.selectbox("Ana Kategori", options=ana_kategoriler, key="ana_kat_secim")
     
     filtrelenmis_altlar = [item for item in tum_veriler if item["ana_kategori"] == secilen_ana_kategori]
     alt_kategori_isimleri = [item["alt_kategori"] for item in filtrelenmis_altlar]
     
-    secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri, key="alt_kat_secim")
+    with col_kat2:
+        secilen_alt_kategori = st.selectbox("Alt Kategori / Konu", options=alt_kategori_isimleri, key="alt_kat_secim")
     
-    st.markdown("---")
-    st.subheader("Konum İzni ve Otomatik GPS Doğrulama")
-    st.info("Sistem, talebinizin ilçe sınırları içerisinde çözülebilmesi için cihazınızın güncel GPS konumuna ihtiyaç duyar.")
+    # --- 2. BÖLÜM: MODERN GPS DOĞRULAMA KARTI ---
+    st.markdown("""
+        <div class="section-card-header">
+            <h4>2. CBS / GPS Konum Doğrulama ve Hasar Görseli</h4>
+            <span>Talebinizin doğru saha ekibine yönlendirilmesi için konumunuzu doğrulayın</span>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+        <div class="gps-box">
+            <div class="gps-box-title">📍 Adım 1: Aşağıdaki Hedef (GPS) İkonuna Dokunarak Konumunuzu Alın</div>
+            <p class="gps-box-desc">Tarayıcınız konum izni isterse <b>"İzin Ver"</b> seçeneğini onaylayın. Sistem Yenipazar ilçe sınırlarını otomatik kontrol edecektir.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col_gps_btn, col_gps_durum = st.columns([1, 3])
+    with col_gps_btn:
+        location = streamlit_geolocation()
     
-    location = streamlit_geolocation()
+    with col_gps_durum:
+        if location and location.get('latitude') is not None and location.get('longitude') is not None:
+            test_lat = location.get('latitude')
+            test_lon = location.get('longitude')
+            sinir_ok = True
+            if yenipazar_poligonu is not None:
+                sinir_ok = yenipazar_poligonu.contains(Point(test_lon, test_lat))
+            if sinir_ok:
+                st.success(f"✅ **GPS Konumu Doğrulandı!** (Yenipazar İlçe Sınırı İçi)\nKoordinat: `{test_lat:.5f}, {test_lon:.5f}`")
+            else:
+                st.error(f"❌ **Konum Sınır Dışı!** Koordinatlarınız (`{test_lat:.5f}, {test_lon:.5f}`) Yenipazar hizmet sınırı dışında görünüyor.")
+        else:
+            st.info("👈 Konum almak için soldaki hedef simgesine tıklayın.")
 
     konum_izni = st.radio(
-        "Konum Paylaşım İzni:",
+        "Konum Paylaşım Onayı:",
         [
             "Konumumun paylaşılmasına izin veriyorum (GPS ile bağlan)", 
             "İzin vermiyorum"
         ],
-        key="vat_konum_izni"
+        key="vat_konum_izni",
+        horizontal=True
     )
     
-    fotograf = st.file_uploader("Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"], key="vat_foto")
-    aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Lütfen sorunu kısaca açıklayınız...", key="vat_aciklama")
+    fotograf = st.file_uploader("📷 Hasarlı Bölgeye Ait Fotoğraf Yükle (Opsiyonel)", type=["jpg", "jpeg", "png"], key="vat_foto")
+    aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Mahalle, sokak bilgisi ve sorunu kısaca açıklayınız...", key="vat_aciklama")
     
-    gonder_btn = st.button("Talebi Gönder", key="vat_gonder_btn", type="primary")
+    gonder_btn = st.button("🚀 Talebi Sisteme Gönder", key="vat_gonder_btn", type="primary", use_container_width=True)
     
     if gonder_btn:
         if not ad_soyad or not telefon or not aciklama:
@@ -367,7 +593,7 @@ with tab1:
         elif "İzin vermiyorum" in konum_izni:
             st.error("Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır.")
         elif location is None or location.get('latitude') is None or location.get('longitude') is None:
-            st.error("GPS konum veriniz alınamadı. Lütfen konum izni verdiğinizden emin olun.")
+            st.error("GPS konum veriniz henüz alınmadı. Lütfen yukarıdaki hedef ikonuna basarak konum izni veriniz.")
         else:
             enlem = location.get('latitude')
             boylam = location.get('longitude')
@@ -454,16 +680,20 @@ with tab1:
 # 🔍 2. SEKME: GÜVENLİ VATANDAŞ TALEP VE SÜREÇ TAKİP MERKEZİ
 # =========================================================================
 with tab2:
-    st.header("Güvenli Vatandaş Talep ve Süreç Takip Merkezi")
-    st.info("KVKK ve veri gizliliği gereği, talebinizin güncel aşamasını güvenle görebilmeniz için hem **Takip Numaranızı** hem de kayıt esnasında bildirdiğiniz **Telefon Numaranızı** girmeniz gerekmektedir.")
+    st.markdown("""
+        <div class="section-card-header">
+            <h4>Güvenli Vatandaş Talep ve Süreç Takip Merkezi</h4>
+            <span>KVKK gereği takip numaranız ve kayıtlı telefon numaranız ile sorgulama yapabilirsiniz</span>
+        </div>
+    """, unsafe_allow_html=True)
     
     col_s1, col_s2 = st.columns(2)
     with col_s1:
-        sorgu_id = st.text_input("Talep Takip Numarası (Örn: KENT-XXXXX)", key="vat_sorgu_id")
+        sorgu_id = st.text_input("Talep Takip Numarası", placeholder="Örn: KENT-12345", key="vat_sorgu_id")
     with col_s2:
-        sorgu_tel = st.text_input("Kayıtlı Telefon Numaranız (Örn: 0555...)", key="vat_sorgu_tel")
+        sorgu_tel = st.text_input("Kayıtlı Telefon Numaranız", placeholder="Örn: 0555...", key="vat_sorgu_tel")
     
-    if st.button("Güvenli Sorgula", key="guvenli_sorgula_btn", type="primary"):
+    if st.button("🔍 Talebi Güvenli Sorgula", key="guvenli_sorgula_btn", type="primary", use_container_width=True):
         if sorgu_id and sorgu_tel:
             try:
                 clean_sorgu_tel = sorgu_tel.strip().replace(" ", "")
@@ -475,7 +705,7 @@ with tab2:
                     st.success(f"Doğrulama Başarılı! Talep: {t['talep_id']} ({t['alt_kategori']})")
                     
                     st.markdown("### 🕒 Şeffaf Süreç Akışı ve Denetim İzi")
-                    st.markdown(f"1. **Talep Oluşturma:** `{t.get('olusturma_tarihi', '-')}` tarihinde tarafınızdan oluşturuldu ve **{t.get('alt_bolum')}** ({t.get('sorumlu_kurum')}) birimine iletildi.")
+                    st.markdown(f"1. **Talep Oluşturma:** `{t.get('olusturma_tarihi', '-')}` tarihinde oluşturuldu ve **{t.get('alt_bolum')}** ({t.get('sorumlu_kurum')}) birimine iletildi.")
                     st.markdown(f"2. **Kurum İncelemesi:** Mevcut Durum: **{t.get('durum')}**")
                     st.markdown(f"3. **Saha Ekibi Sevk:** Atanan Sorumlu: **{t.get('atanan_personel')}** (Sevk Zamanı: `{t.get('guncelleme_tarihi', '-')}`)")
                     st.markdown(f"4. **Çözüm ve Kapanış:** `{t.get('cozum_tarihi', 'Sahada işlem devam ediyor')}`")
@@ -509,15 +739,22 @@ with tab2:
         else:
             st.warning("⚠️ Lütfen hem takip numaranızı hem de telefon numaranızı eksiksiz girin.")
 
+# =========================================================================
+# 🔒 3. SEKME: KURUM VE PERSONEL GİRİŞ PANELİ
+# =========================================================================
 with tab3:
-    st.header("Kurum ve Personel Giriş Paneli")
-    st.info("Güvenlik Notu: Bu alan yetkili kurum yöneticilerine, amirlere ve saha personeline özeldir.")
+    st.markdown("""
+        <div class="section-card-header">
+            <h4>Kurum Yöneticisi ve Saha Personeli Giriş Portalı</h4>
+            <span>Yetkili kurum müdürleri, amirler ve saha ekipleri için şifreli erişim alanı</span>
+        </div>
+    """, unsafe_allow_html=True)
 
     if not st.session_state["personel_giris"]:
-        tel_giris = st.text_input("Telefon Numarası (Örn: 0555...)", key="personel_tel_input")
-        sifre_giris = st.text_input("Şifre", type="password", key="personel_sifre_input")
+        tel_giris = st.text_input("Telefon Numarası", placeholder="Örn: 0555...", key="personel_tel_input")
+        sifre_giris = st.text_input("Şifre", type="password", placeholder="••••••", key="personel_sifre_input")
         
-        if st.button("Güvenli Giriş Yap", key="personel_giris_btn", type="primary"):
+        if st.button("🔐 Güvenli Giriş Yap", key="personel_giris_btn", type="primary", use_container_width=True):
             if tel_giris and sifre_giris:
                 try:
                     clean_tel = tel_giris.strip().replace(" ", "")
@@ -538,25 +775,25 @@ with tab3:
 
     if st.session_state["personel_giris"]:
         personel = st.session_state["giris_yapan_personel"]
-        st.success(f"Hoş geldiniz, {personel['ad_soyad']} ({personel['unvan']} - {personel['sorumlu_birim']})")
-        
-        if st.button("Çıkış Yap", key="cikis_yap_btn"):
-            st.session_state["personel_giris"] = False
-            st.session_state["giris_yapan_personel"] = None
-            st.rerun()
+        col_w1, col_w2 = st.columns([3, 1])
+        with col_w1:
+            st.success(f"👤 **{personel['ad_soyad']}** | {personel['unvan']} ({personel['sorumlu_birim']})")
+        with col_w2:
+            if st.button("🚪 Çıkış", key="cikis_yap_btn", use_container_width=True):
+                st.session_state["personel_giris"] = False
+                st.session_state["giris_yapan_personel"] = None
+                st.rerun()
 
         unvan_degeri = str(personel.get("unvan", "")).strip().lower()
         is_super_admin = unvan_degeri in ["süper_admin", "süper admin", "super_admin", "super admin"]
         is_saha_personeli = unvan_degeri in ["saha personeli", "usta", "teknisyen", "operatör", "saha ekip sorumlusu"]
 
-        # =========================================================================
-        # 👑 1. SÜPER ADMIN PANELI
-        # =========================================================================
+        # 1. SÜPER ADMIN PANELİ
         if is_super_admin:
             st.markdown("---")
-            st.subheader("Süper Admin - Platform Yönetim Paneli")
+            st.subheader("👑 Süper Admin - Platform Yönetim Paneli")
             
-            admin_secim = st.radio("Yönetim İşlemi Seçin:", ["Sistem Kurum ve Yetkili Matrisi", "Kurum Yöneticisi / Müdür Ekle"], key="admin_radio_secim")
+            admin_secim = st.radio("Yönetim İşlemi Seçin:", ["Sistem Kurum ve Yetkili Matrisi", "Kurum Yöneticisi / Müdür Ekle"], key="admin_radio_secim", horizontal=True)
             
             if admin_secim == "Sistem Kurum ve Yetkili Matrisi":
                 try:
@@ -593,7 +830,7 @@ with tab3:
                 p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Fen İşleri Müdürü", "Su ve Kanalizasyon Amiri", "Park ve Bahçeler Amiri", "Zabıta Amiri"], key="p_unvan_select")
                 p_birim = st.selectbox("Sorumlu Olduğu Kurum / Birim", [k["alt_bolum"] for k in kurumlar_listesi], key="p_birim_select")
                 
-                if st.button("Kaydet", key="yonetici_olustur_btn", type="primary"):
+                if st.button("Kaydet", key="yonetici_olustur_btn", type="primary", use_container_width=True):
                     if p_ad and p_tel and p_sifre:
                         with conn.session as s:
                             s.execute(text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), {"ad": p_ad, "tel": p_tel.strip(), "sifre": p_sifre, "unvan": p_unvan, "birim": p_birim})
@@ -601,12 +838,10 @@ with tab3:
                         st.success("Yönetici eklendi!")
                         st.rerun()
 
-        # =========================================================================
-        # 🛠️ 2. SAHA PERSONELİ MOBİL OPERASYON VE ANLIK BİLDİRİM PANELİ
-        # =========================================================================
+        # 2. SAHA PERSONELİ MOBİL OPERASYON PANELİ
         elif is_saha_personeli:
             st.markdown("---")
-            st.subheader(f"📱 Saha Mobil Operasyon Paneli - {personel['ad_soyad']}")
+            st.subheader(f"📱 Saha Mobil Operasyon Paneli")
             
             try:
                 df_t_saha = conn.query("SELECT * FROM talepler WHERE atanan_personel = :personel_ad;", params={"personel_ad": personel['ad_soyad']}, ttl=0)
@@ -615,10 +850,9 @@ with tab3:
                 saha_gorevleri = []
                 st.error(f"Görevler yüklenirken hata: {e}")
 
-            # --- APP İÇİ ANLIK BİLDİRİM ÇUBUĞU (PUSH NOTIFICATION SİMÜLASYONU) ---
             bekleyen_is_sayisi = len([g for g in saha_gorevleri if "Çözüldü" not in str(g.get('durum')) and "Tamamlandı" not in str(g.get('durum'))])
             if bekleyen_is_sayisi > 0:
-                st.error(f"🔔 **CANLI GÖREV BİLDİRİMİ:** Üzerinize atanmış **{bekleyen_is_sayisi} adet** aktif saha görevi bulunmaktadır! Lütfen aşağıdaki iş emirlerini inceleyiniz.")
+                st.error(f"🔔 **CANLI GÖREV BİLDİRİMİ:** Üzerinize atanmış **{bekleyen_is_sayisi} adet** aktif saha görevi bulunmaktadır!")
             else:
                 st.success("✅ Üzerinize atanmış bekleyen yeni iş emri bulunmamaktadır.")
             
@@ -632,7 +866,7 @@ with tab3:
                     lon = gorev.get('boylam')
                     if lat and lon:
                         maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-                        st.link_button("🗺️ Google Haritalar ile Sahaya Git", maps_url, type="primary")
+                        st.link_button("🗺️ Google Haritalar ile Sahaya Git", maps_url, type="primary", use_container_width=True)
                     
                     if gorev.get('fotograf_b64'):
                         st.markdown("**Vatandaş Hasar Görseli:**")
@@ -646,7 +880,7 @@ with tab3:
                     
                     saha_foto_yukle = st.file_uploader("Çözüm Sonrası Fotoğraf Çek / Yükle", type=["jpg", "jpeg", "png"], key=f"saha_up_{gorev['talep_id']}_{idx}")
                     
-                    if st.button(f"✅ İşi Tamamla ve Müdüre Gönder ({gorev['talep_id']})", key=f"saha_gonder_{gorev['talep_id']}_{idx}", type="primary"):
+                    if st.button(f"✅ İşi Tamamla ve Müdüre Gönder ({gorev['talep_id']})", key=f"saha_gonder_{gorev['talep_id']}_{idx}", type="primary", use_container_width=True):
                         if saha_foto_yukle is not None:
                             s_foto_adi = saha_foto_yukle.name
                             s_foto_b64 = base64.b64encode(saha_foto_yukle.getvalue()).decode("utf-8")
@@ -680,12 +914,10 @@ with tab3:
                         else:
                             st.warning("Lütfen sahadaki çözüme ait kanıt fotoğrafı yükleyiniz.")
 
-        # =========================================================================
-        # 🏛️ 3. KURUM YETKİLİSİ / MÜDÜR PANELI (KAYNAK YÖNETİMİ ENTEGRE)
-        # =========================================================================
+        # 3. KURUM YETKİLİSİ / MÜDÜR PANELİ
         else:
             st.markdown("---")
-            st.subheader(f"🏛️ {personel['sorumlu_birim']} - Operasyon ve Kaynak Yönetim Paneli")
+            st.subheader(f"🏛️ {personel['sorumlu_birim']} - Operasyon Paneli")
             
             with st.expander("👥 Birim Saha Personelleri ve İnsan Kaynağı Yönetimi"):
                 try:
@@ -712,7 +944,7 @@ with tab3:
                     alt_sifre = st.text_input("Şifre", type="password", key="birim_alt_sifre")
                     alt_unvan = st.selectbox("Unvan", ["Saha Personeli", "Usta", "Teknisyen", "Operatör", "Saha Ekip Sorumlusu"], key="birim_alt_unvan")
                     
-                    if st.form_submit_button("Birimime Saha Personeli Kaydet"):
+                    if st.form_submit_button("Birimime Saha Personeli Kaydet", use_container_width=True):
                         if alt_ad and alt_tel and alt_sifre:
                             with conn.session as s:
                                 s.execute(text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), {"ad": alt_ad, "tel": alt_tel.strip(), "sifre": alt_sifre, "unvan": alt_unvan, "birim": personel['sorumlu_birim']})
@@ -747,9 +979,8 @@ with tab3:
                         lon = talep.get('boylam')
                         if lat and lon:
                             maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-                            st.link_button("🗺️ Konumu Haritada Gör", maps_url)
+                            st.link_button("🗺️ Konumu Haritada Gör", maps_url, use_container_width=True)
                         
-                        # WhatsApp Otomasyonu (Şifresiz Doğrudan Hasar Görseli Linki Dahil!)
                         atanan_kisi_adi = talep.get('atanan_personel')
                         if atanan_kisi_adi and atanan_kisi_adi != "Atanmadı":
                             try:
@@ -761,7 +992,7 @@ with tab3:
                                 
                                 wa_mesaj = f"🔔 *Yeni Saha Gorevi ({talep['talep_id']})*\n*Kategori:* {talep['alt_kategori']}\n*Aciklama:* {talep['aciklama']}\n*Konum:* https://www.google.com/maps/search/?api=1&query={lat},{lon}{gorsel_satiri}"
                                 wa_url = f"https://wa.me/{hedef_tel}?text={urllib.parse.quote(wa_mesaj)}"
-                                st.link_button("📲 WhatsApp ile Saha Personeline Gönder", wa_url)
+                                st.link_button("📲 WhatsApp ile Saha Personeline Gönder", wa_url, use_container_width=True)
                             except:
                                 pass
 
@@ -769,7 +1000,7 @@ with tab3:
                             vatandas_tel = talep.get('telefon_no', '').strip()
                             vat_mesaj = f"Sayin {talep['ad_soyad']}, {talep['talep_id']} numarali talebiniz kurumumuz tarafindan basariyla cozumlenmistir. Saglikli gunler dileriz."
                             vat_wa_url = f"https://wa.me/{vatandas_tel}?text={urllib.parse.quote(vat_mesaj)}"
-                            st.link_button("✅ Vatandaşa WhatsApp Çözüm Bildirimi Gönder", vat_wa_url, type="primary")
+                            st.link_button("✅ Vatandaşa WhatsApp Çözüm Bildirimi Gönder", vat_wa_url, type="primary", use_container_width=True)
 
                     with col2:
                         st.markdown("**Vatandaş Hasar Fotoğrafı:**")
@@ -819,7 +1050,7 @@ with tab3:
                         atanacak_kisi = st.selectbox("Saha Personeli Ata / Değiştir", personeller, index=personel_index, key=f"personel_sel_{talep['talep_id']}_{idx}")
                         yonetici_notu_input = st.text_area("Yönetici Notu veya Red Gerekçesi", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
                         
-                        kaydet_buton = st.form_submit_button(f"Kararı ve Atamayı Kaydet ({talep['talep_id']})", type="primary")
+                        kaydet_buton = st.form_submit_button(f"Kararı ve Atamayı Kaydet ({talep['talep_id']})", type="primary", use_container_width=True)
                         
                         if kaydet_buton:
                             if "Reddedildi" in yeni_durum and not yonetici_notu_input.strip():
@@ -861,10 +1092,7 @@ with tab3:
                                 except Exception as e:
                                     st.error(f"Güncelleme hatası: {e}")
 
-            # =========================================================================
-            # 📊 İNSAN VE EKONOMİK KAYNAK YÖNETİMİ & YÖNETİCİ ANALİZ MERKEZİ
-            # =========================================================================
-            st.markdown("---")
+            # 📊 İNSAN VE EKONOMİK KAYNAK YÖNETİMİ ANALİZ MERKEZİ
             st.markdown("---")
             st.header("📊 İnsan ve Ekonomik Kaynak Yönetimi Analiz Merkezi")
             st.info("Saha personeli iş yüklerini, ortalama çözüm sürelerini (SLA) ve gereksiz keşif turlarının önlenmesiyle sağlanan ekonomik tasarrufu hesaplar.")
@@ -878,7 +1106,6 @@ with tab3:
                     bekleyen_talep = len(df_rapor[df_rapor['durum'].str.contains("Yeni|İnceleme", na=False)])
                     reddedilen_talep = len(df_rapor[df_rapor['durum'].str.contains("Reddedildi", na=False)])
                     
-                    # Ekonomik ve SLA Hesaplaması
                     tahmini_tasarruf_tl = (cozulen_talep + reddedilen_talep) * 450
                     
                     sla_saatler = []
@@ -901,7 +1128,6 @@ with tab3:
                     
                     st.markdown("---")
                     
-                    # --- İNSAN KAYNAĞI PERFORMANS MATRİSİ ---
                     st.subheader("👷 İnsan Kaynağı ve Saha Ekibi Verimlilik Tablosu")
                     atanan_df = df_rapor[df_rapor['atanan_personel'] != "Atanmadı"]
                     if not atanan_df.empty:
@@ -954,12 +1180,13 @@ with tab3:
                     )
                     
                     st.download_button(
-                        label="Resmi Yönetici ve Kaynak Raporunu PDF Olarak İndir",
+                        label="📥 Resmi Yönetici ve Kaynak Raporunu PDF Olarak İndir",
                         data=pdf_bytes,
                         file_name=f"KentAsistan_Kaynak_Raporu_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
                         mime="application/pdf",
                         type="primary",
-                        key="yonetici_pdf_indir_btn"
+                        key="yonetici_pdf_indir_btn",
+                        use_container_width=True
                     )
                     
                     st.markdown("---")
