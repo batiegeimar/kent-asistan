@@ -35,166 +35,39 @@ def logo_base64_getir(dosya_yolu="logo.jpg"):
 logo_b64 = logo_base64_getir()
 
 # --- KURUMSAL GOVTECH TASARIM & MOBİL PWA CSS ENJEKSİYONU ---
-st.markdown("""
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="KentAsistan">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0f172a">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+st.markdown("""<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="KentAsistan"><meta name="mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0f172a">""", unsafe_allow_html=True)
 
+st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 header[data-testid="stHeader"] { background: transparent !important; }
 #MainMenu, footer, .stDeployButton { display: none !important; }
 .stApp { background-color: #f1f5f9; }
 .block-container { padding-top: 1.2rem !important; padding-bottom: 3rem !important; max-width: 780px !important; }
-
-.kent-hero {
-background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-border-radius: 18px;
-padding: 20px 24px;
-display: flex;
-align-items: center;
-gap: 20px;
-box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
-margin-bottom: 20px;
-border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.kent-hero img {
-width: 84px;
-height: 84px;
-object-fit: cover;
-border-radius: 14px;
-border: 2px solid rgba(56, 189, 248, 0.35);
-flex-shrink: 0;
-}
-.kent-hero-text h1 {
-color: #ffffff !important;
-font-size: 1.65rem !important;
-font-weight: 700 !important;
-margin: 0 0 4px 0 !important;
-padding: 0 !important;
-letter-spacing: -0.02em;
-}
-.kent-hero-text p {
-color: #cbd5e1 !important;
-font-size: 0.9rem !important;
-margin: 0 0 8px 0 !important;
-line-height: 1.4;
-}
-.kent-badge {
-display: inline-block;
-background: rgba(2, 132, 199, 0.25);
-color: #38bdf8;
-border: 1px solid rgba(56, 189, 248, 0.4);
-font-size: 0.72rem;
-font-weight: 600;
-padding: 3px 10px;
-border-radius: 999px;
-letter-spacing: 0.03em;
-}
-
-.stTabs [data-baseweb="tab-list"] {
-gap: 8px;
-background-color: #e2e8f0;
-padding: 6px;
-border-radius: 14px;
-margin-bottom: 16px;
-}
-.stTabs [data-baseweb="tab"] {
-height: 44px;
-border-radius: 10px;
-font-weight: 600;
-font-size: 0.88rem;
-color: #475569;
-padding: 0 14px;
-border: none !important;
-background-color: transparent;
-}
-.stTabs [aria-selected="true"] {
-background-color: #ffffff !important;
-color: #0f172a !important;
-box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
-}
+.kent-hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 18px; padding: 20px 24px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25); margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.08); }
+.kent-hero img { width: 84px; height: 84px; object-fit: cover; border-radius: 14px; border: 2px solid rgba(56, 189, 248, 0.35); flex-shrink: 0; }
+.kent-hero-text h1 { color: #ffffff !important; font-size: 1.65rem !important; font-weight: 700 !important; margin: 0 0 4px 0 !important; padding: 0 !important; letter-spacing: -0.02em; }
+.kent-hero-text p { color: #cbd5e1 !important; font-size: 0.9rem !important; margin: 0 0 8px 0 !important; line-height: 1.4; }
+.kent-badge { display: inline-block; background: rgba(2, 132, 199, 0.25); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.03em; }
+.stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: #e2e8f0; padding: 6px; border-radius: 14px; margin-bottom: 16px; }
+.stTabs [data-baseweb="tab"] { height: 44px; border-radius: 10px; font-weight: 600; font-size: 0.88rem; color: #475569; padding: 0 14px; border: none !important; background-color: transparent; }
+.stTabs [aria-selected="true"] { background-color: #ffffff !important; color: #0f172a !important; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
 .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none !important; }
-
-.section-card-header {
-background: #ffffff;
-border-left: 4px solid #0284c7;
-padding: 12px 16px;
-border-radius: 10px;
-margin: 14px 0 12px 0;
-box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
+.section-card-header { background: #ffffff; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 10px; margin: 14px 0 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .section-card-header h4 { margin: 0; color: #0f172a; font-size: 1rem; font-weight: 700; }
 .section-card-header span { color: #64748b; font-size: 0.8rem; }
-
-.gps-box {
-background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-border: 1.5px dashed #0284c7;
-border-radius: 14px;
-padding: 14px 16px;
-margin-bottom: 10px;
-}
+.gps-box { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px dashed #0284c7; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
 .gps-box-title { color: #0369a1; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
 .gps-box-desc { color: #334155; font-size: 0.82rem; margin: 0; }
-
-iframe[title*="streamlit_geolocation"] {
-transform: scale(1.28);
-transform-origin: left center;
-margin: 6px 0 6px 4px;
-border-radius: 8px;
-}
-
-.stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
-background-color: #ffffff !important;
-border-radius: 10px !important;
-border-color: #cbd5e1 !important;
-}
-
-.stButton>button[kind="primary"], .stDownloadButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] {
-background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%) !important;
-color: #ffffff !important;
-border: none !important;
-border-radius: 12px !important;
-font-weight: 600 !important;
-font-size: 0.95rem !important;
-min-height: 48px !important;
-box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important;
-transition: all 0.2s ease !important;
-}
-.stButton>button[kind="primary"]:hover {
-transform: translateY(-1px);
-box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35) !important;
-}
-
-.stButton>button, .stDownloadButton>button, .stLinkButton>a {
-border-radius: 12px !important;
-font-weight: 600 !important;
-min-height: 46px !important;
-}
-
-div[data-testid="metric-container"] {
-background-color: #ffffff;
-border: 1px solid #e2e8f0;
-padding: 15px;
-border-radius: 14px;
-box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-}
-
-.streamlit-expanderHeader {
-background-color: #ffffff !important;
-border-radius: 12px !important;
-border: 1px solid #e2e8f0 !important;
-font-weight: 600 !important;
-color: #1e293b !important;
-padding: 14px !important;
-}
-
+iframe[title*="streamlit_geolocation"] { transform: scale(1.28); transform-origin: left center; margin: 6px 0 6px 4px; border-radius: 8px; }
+.stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div { background-color: #ffffff !important; border-radius: 10px !important; border-color: #cbd5e1 !important; }
+.stButton>button[kind="primary"], .stDownloadButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] { background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%) !important; color: #ffffff !important; border: none !important; border-radius: 12px !important; font-weight: 600 !important; font-size: 0.95rem !important; min-height: 48px !important; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important; transition: all 0.2s ease !important; }
+.stButton>button[kind="primary"]:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35) !important; }
+.stButton>button, .stDownloadButton>button, .stLinkButton>a { border-radius: 12px !important; font-weight: 600 !important; min-height: 46px !important; }
+div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+.streamlit-expanderHeader { background-color: #ffffff !important; border-radius: 12px !important; border: 1px solid #e2e8f0 !important; font-weight: 600 !important; color: #1e293b !important; padding: 14px !important; }
 [data-testid="stSidebar"] { background-color: #0f172a; color: #ffffff; }
 [data-testid="stSidebar"] .stMarkdown { color: #e2e8f0; }
-
 @media (max-width: 640px) {
 .kent-hero { padding: 16px; gap: 14px; }
 .kent-hero img { width: 66px; height: 66px; }
@@ -202,8 +75,7 @@ padding: 14px !important;
 .kent-hero-text p { font-size: 0.8rem !important; }
 .stTabs [data-baseweb="tab"] { font-size: 0.78rem; padding: 0 8px; }
 }
-</style>
-""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
 # --- POSTGRESQL VERİTABANI BAĞLANTISI ---
 try:
