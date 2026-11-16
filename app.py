@@ -307,8 +307,8 @@ st.sidebar.info("📱 **Mobil Uygulama İpucu:** Tarayıcı menüsünden *'Ana E
 # --- KURUMSAL LOGO VE BAŞLIK ENTEGRASYONU ---
 col_logo, col_baslik = st.columns([2, 3])
 with col_logo:
-    if os.path.exists("logo.jpeg"):
-        st.image("logo.jpeg", use_container_width=True)
+    if os.path.exists("logo.jpg"):
+        st.image("logo.jpg", use_container_width=True)
 with col_baslik:
     st.title("KentAsistan")
     st.markdown("##### *Akıllı Kent ve Saha Yönetimi | Yenipazar Belediyesi Ortak Çözüm Masası*")
