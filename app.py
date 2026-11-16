@@ -116,8 +116,12 @@ if "gorsel" in query_params:
 def tr_temizle(metin):
     if not metin:
         return ""
+    # Türkçe karakterleri latin harflerine dönüştür
     ceviri = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
-    return str(metin).translate(ceviri)
+    temizlenmis = str(metin).translate(ceviri)
+    # FPDF Helvetica fontunun desteklemediği emoji ve özel unicode karakterleri filtrele
+    temizlenmis = ''.join(c for c in temizlenmis if ord(c) < 128)
+    return temizlenmis
 
 def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok_birim, basari_orani, raporlayan_kisi, raporlayan_birim):
     pdf = FPDF()
