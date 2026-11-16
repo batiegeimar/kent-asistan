@@ -12,6 +12,9 @@ from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
 from fpdf import FPDF
 
+# Uygulama Canlı URL'si (WhatsApp görsel linki üretimi için)
+APP_BASE_URL = "https://kent-asistan-bpcusdhobee6vqmjbrcsxe.streamlit.app"
+
 # Sayfa Yapılandırması
 st.set_page_config(page_title="KentAsistan - Akıllı Kent ve Saha Yönetimi", layout="centered", page_icon="🏙️")
 
@@ -54,6 +57,61 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- POSTGRESQL VERİTABANI BAĞLANTISI ---
+try:
+    conn = st.connection("postgresql", type="sql")
+    baglanti_hatasi = None
+except Exception as e:
+    conn = None
+    baglanti_hatasi = str(e)
+
+# =========================================================================
+# 📸 SAHA PERSONELİ İÇİN ŞİFRESİZ HIZLI HASAR GÖRSELİ EKRANI (?gorsel=ID)
+# =========================================================================
+query_params = st.query_params
+if "gorsel" in query_params:
+    hedef_talep_id = query_params["gorsel"].strip()
+    st.title("📸 KentAsistan - Saha Görev Kartı")
+    st.markdown(f"##### *Talep Numarası: `{hedef_talep_id}`*")
+    st.markdown("---")
+    
+    if conn is not None:
+        try:
+            df_gorsel = conn.query("SELECT * FROM talepler WHERE talep_id = :tid;", params={"tid": hedef_talep_id}, ttl=0)
+            if not df_gorsel.empty:
+                t_data = df_gorsel.iloc[0].to_dict()
+                
+                st.info(f"**Kategori:** {t_data.get('alt_kategori')} | **Sorumlu Birim:** {t_data.get('alt_bolum')}")
+                st.write(f"**Vatandaş Açıklaması:** {t_data.get('aciklama')}")
+                st.write(f"**Bildirim Zamanı:** `{t_data.get('olusturma_tarihi')}`")
+                
+                lat = t_data.get('enlem')
+                lon = t_data.get('boylam')
+                if lat and lon:
+                    maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                    st.link_button("🗺️ Google Haritalar'da Yol Tarifi Al", maps_url, type="primary")
+                
+                st.markdown("### 📷 Vatandaşın Yüklediği Hasar Fotoğrafı")
+                foto_b64 = t_data.get('fotograf_b64', '')
+                if foto_b64:
+                    try:
+                        img = Image.open(io.BytesIO(base64.b64decode(foto_b64)))
+                        st.image(img, caption=f"{hedef_talep_id} - Hasar Görseli", use_container_width=True)
+                    except Exception:
+                        st.error("Görsel dosyası çözümlenemedi.")
+                else:
+                    st.warning("Vatandaş bu talep için fotoğraf yüklememiş.")
+                    
+                st.markdown("---")
+                if st.button("🏠 Ana Uygulamaya / Giriş Ekranına Geç"):
+                    st.query_params.clear()
+                    st.rerun()
+            else:
+                st.error("Belirtilen talep numarasına ait kayıt bulunamadı.")
+        except Exception as e:
+            st.error(f"Veri getirme hatası: {e}")
+    st.stop() # Normal arayüzün yüklenmesini durdurur, sadece bu kartı gösterir
+
 # --- TÜRKÇE KARAKTER DÖNÜŞTÜRÜCÜ & PDF OLUŞTURMA MOTORU ---
 def tr_temizle(metin):
     if not metin:
@@ -65,8 +123,7 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf = FPDF()
     pdf.add_page()
     
-    # Üst Kurumsal Başlık Bandı (Emojisiz)
-    pdf.set_fill_color(15, 23, 42) # Koyu Lacivert
+    pdf.set_fill_color(15, 23, 42)
     pdf.rect(0, 0, 210, 35, 'F')
     
     pdf.set_text_color(255, 255, 255)
@@ -78,7 +135,6 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.set_x(10)
     pdf.cell(0, 6, tr_temizle("Yonetici Performans, Denetim ve Yapay Zeka Stratejik Analiz Raporu"), ln=True)
     
-    # Rapor Üst Bilgileri
     pdf.set_text_color(30, 41, 59)
     pdf.set_xy(10, 42)
     pdf.set_font("Helvetica", "B", 10)
@@ -86,7 +142,6 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.cell(0, 6, tr_temizle(f"Duzenleyen Yetkili: {raporlayan_kisi} ({raporlayan_birim})"), ln=True)
     pdf.ln(4)
     
-    # 1. Bölüm: Operasyonel KPI Özeti
     pdf.set_fill_color(241, 245, 249)
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 9, tr_temizle(" 1. OPERASYONEL PERFORMANS OZETI (KPI)"), ln=True, fill=True)
@@ -99,7 +154,6 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.cell(95, 7, tr_temizle(f"- Reddedilen / Yersiz Talep: {reddedilen}"), border=1, ln=True)
     pdf.ln(6)
     
-    # 2. Bölüm: Yapay Zeka Stratejik Sentezi
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 9, tr_temizle(" 2. YAPAY ZEKA DESTEKLI STRATEJIK YONETICI OZETI"), ln=True, fill=True)
     pdf.ln(3)
@@ -116,7 +170,6 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.multi_cell(0, 6, tr_temizle(ozet_3))
     pdf.ln(6)
     
-    # 3. Bölüm: Birim İş Yükü Dağılımı
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 9, tr_temizle(" 3. BIRIMLERE GORE IS YUKU DAGILIMI"), ln=True, fill=True)
     pdf.ln(3)
@@ -128,12 +181,10 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
             pdf.cell(0, 6, tr_temizle(f"- {birim}: {sayi} adet talep"), ln=True)
     pdf.ln(6)
     
-    # 4. Bölüm: Son İşlem Gören Talepler Tablosu
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 9, tr_temizle(" 4. DENETIM IZI VE SON TALEPLER LISTESI"), ln=True, fill=True)
     pdf.ln(3)
     
-    # Tablo Başlığı
     pdf.set_font("Helvetica", "B", 9)
     pdf.set_fill_color(226, 232, 240)
     pdf.cell(28, 7, "Talep ID", border=1, fill=True)
@@ -141,7 +192,6 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.cell(50, 7, tr_temizle("Sorumlu Birim"), border=1, fill=True)
     pdf.cell(60, 7, tr_temizle("Mevcut Durum"), border=1, fill=True, ln=True)
     
-    # Tablo Satırları (Son 15 kayıt)
     pdf.set_font("Helvetica", "", 8)
     for _, row in df_rapor.tail(15).iterrows():
         t_id = tr_temizle(row.get('talep_id', ''))[:14]
@@ -162,14 +212,6 @@ if "personel_giris" not in st.session_state:
 if "giris_yapan_personel" not in st.session_state:
     st.session_state["giris_yapan_personel"] = None
 
-# --- POSTGRESQL VERİTABANI BAĞLANTISI ---
-try:
-    conn = st.connection("postgresql", type="sql")
-    baglanti_hatasi = None
-except Exception as e:
-    conn = None
-    baglanti_hatasi = str(e)
-
 # Kurumlar Listesi
 kurumlar_listesi = [
     {"kurum_adi": "Yenipazar Belediyesi", "alt_bolum": "Fen İşleri Müdürlüğü"},
@@ -181,7 +223,6 @@ kurumlar_listesi = [
     {"kurum_adi": "Enerya Doğalgaz", "alt_bolum": "Doğalgaz Acil Servis"}
 ]
 
-# Kategori ve Kurum Eşleştirme Matrisi
 tum_veriler = [
     {"ana_kategori": "Su Altyapısı ile İlgili Talepler", "alt_kategori": "Su Borusu Patlağı", "sorumlu_kurum": "Aydın Su ve Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
     {"ana_kategori": "Su Altyapısı ile İlgili Talepler", "alt_kategori": "Su Kesintisi", "sorumlu_kurum": "Aydın Su ve Kanalizasyon İdaresi (ASKİ)", "alt_bolum": "Su ve Kanalizasyon Müdürlüğü"},
@@ -222,23 +263,21 @@ def ilce_sinirini_yukle():
 
 yenipazar_poligonu = ilce_sinirini_yukle()
 
-# Sidebar Durum Göstergeleri
 if yenipazar_poligonu is not None:
-    st.sidebar.success("🟢 CBS Altyapı: Yenipazar Sınırı Aktif")
+    st.sidebar.success("CBS Altyapisi: Yenipazar Siniri Aktif")
 else:
-    st.sidebar.error("🔴 CBS Altyapı: Sınır Dosyası Bulunamadı!")
+    st.sidebar.error("CBS Altyapisi: Sinir Dosyasi Bulunamadi!")
 
 if baglanti_hatasi is None:
-    st.sidebar.success("🟢 Supabase: Bulut Veritabanı Aktif")
+    st.sidebar.success("Supabase: Bulut Veritabani Aktif")
 else:
-    st.sidebar.error(f"🔴 Supabase Bağlantı Hatası: {baglanti_hatasi}")
+    st.sidebar.error(f"Supabase Baglanti Hatasi: {baglanti_hatasi}")
 
 st.title("🏙️ KentAsistan - Akıllı Kent ve Saha Yönetimi")
 st.markdown("##### *Yenipazar Belediyesi ve Paydaş Kurumlar Ortak Çözüm Masası*")
 st.markdown("---")
 
-# İki Temel Güvenli Sekme
-tab1, tab2 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔒 Kurum / Yönetim Paneli"])
+tab1, tab2, tab3 = st.tabs(["📝 Talep Bildir (Vatandaş)", "🔍 Talep Sorgula & Şeffaf Takip", "🔒 Kurum / Yönetim Paneli"])
 
 with tab1:
     st.header("Yeni Talep Oluştur")
@@ -251,7 +290,7 @@ with tab1:
         secilen_ilce = st.selectbox("İlçe", options=["Yenipazar", "Diğer"], index=0, key="vat_ilce")
         
     if secilen_ilce != "Yenipazar":
-        st.warning("⚠️ KentAsistan şu an yalnızca **Yenipazar** ilçesinde aktif olarak hizmet vermektedir.")
+        st.warning("KentAsistan şu an yalnızca **Yenipazar** ilçesinde aktif olarak hizmet vermektedir.")
     
     tc_kimlik = st.text_input("TC Kimlik Numarası (Opsiyonel)", key="vat_tc")
     ad_soyad = st.text_input("Ad Soyad *", key="vat_ad")
@@ -265,7 +304,7 @@ with tab1:
     secilen_alt_kategori = st.selectbox("Alt Kategori", options=alt_kategori_isimleri, key="alt_kat_secim")
     
     st.markdown("---")
-    st.subheader("📍 Konum İzni ve Otomatik GPS Doğrulama")
+    st.subheader("Konum İzni ve Otomatik GPS Doğrulama")
     st.info("Sistem, talebinizin ilçe sınırları içerisinde çözülebilmesi için cihazınızın güncel GPS konumuna ihtiyaç duyar.")
     
     location = streamlit_geolocation()
@@ -273,8 +312,8 @@ with tab1:
     konum_izni = st.radio(
         "Konum Paylaşım İzni:",
         [
-            "✅ Konumumun paylaşılmasına izin veriyorum (GPS ile bağlan)", 
-            "❌ İzin vermiyorum"
+            "Konumumun paylaşılmasına izin veriyorum (GPS ile bağlan)", 
+            "İzin vermiyorum"
         ],
         key="vat_konum_izni"
     )
@@ -286,13 +325,13 @@ with tab1:
     
     if gonder_btn:
         if not ad_soyad or not telefon or not aciklama:
-            st.error("❌ Lütfen zorunlu alanları (*) doldurunuz.")
+            st.error("Lütfen zorunlu alanları (*) doldurunuz.")
         elif secilen_ilce != "Yenipazar":
-            st.error("❌ **Hata:** Seçilen ilçe için sistem aktif değildir.")
+            st.error("Seçilen ilçe için sistem aktif değildir.")
         elif "İzin vermiyorum" in konum_izni:
-            st.error("❌ **Hata:** Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır.")
+            st.error("Konum paylaşımına izin vermediğiniz için talep oluşturulamamaktadır.")
         elif location is None or location.get('latitude') is None or location.get('longitude') is None:
-            st.error("❌ **Hata:** GPS konum veriniz alınamadı. Lütfen konum izni verdiğinizden emin olun.")
+            st.error("GPS konum veriniz alınamadı. Lütfen konum izni verdiğinizden emin olun.")
         else:
             enlem = location.get('latitude')
             boylam = location.get('longitude')
@@ -303,7 +342,7 @@ with tab1:
                 sinir_icinde_mi = yenipazar_poligonu.contains(vatandas_noktasi)
             
             if not sinir_icinde_mi:
-                st.error("❌ **Hata:** GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
+                st.error("GPS koordinatlarınız resmi Yenipazar ilçe sınırları dışındadır. Talep reddedildi.")
             else:
                 eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
                 sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Yenipazar Belediyesi"
@@ -376,8 +415,58 @@ with tab1:
                     st.error("Veritabanı bağlantısı kurulamadı.")
 
 with tab2:
+    st.header("Vatandaş Şeffaf Talep ve Süreç Takip Merkezi")
+    st.info("Takip numaranızla (Örn: KENT-12345) talebinizin hangi birimde olduğunu, hangi saha personeline atandığını ve tüm zaman damgalarını şeffafça takip edebilirsiniz.")
+    
+    sorgu_id = st.text_input("Talep Takip Numarasını Giriniz (Örn: KENT-XXXXX)", key="vat_sorgu_input")
+    
+    if st.button("Talebi Sorgula", key="talep_sorgula_btn", type="primary"):
+        if sorgu_id:
+            try:
+                df_sorgu = conn.query("SELECT * FROM talepler WHERE talep_id = :tid;", params={"tid": sorgu_id.strip()}, ttl=0)
+                if not df_sorgu.empty:
+                    t = df_sorgu.iloc[0].to_dict()
+                    st.success(f"Talep Bulundu: {t['talep_id']} ({t['alt_kategori']})")
+                    
+                    st.markdown("### Süreç Akışı ve Denetim İzi (Şeffaf Takip)")
+                    
+                    st.markdown(f"1. **Talep Oluşturma:** `{t.get('olusturma_tarihi', '-')}` tarihinde vatandaş tarafından oluşturuldu ve **{t.get('alt_bolum')}** ({t.get('sorumlu_kurum')}) birimine iletildi.")
+                    st.markdown(f"2. **Yönetici / Müdür İncelemesi:** Mevcut Durum: **{t.get('durum')}**")
+                    st.markdown(f"3. **Saha Personeli Ataması:** Atanan Personel: **{t.get('atanan_personel')}** (Sevk Zamanı / Güncelleme: `{t.get('guncelleme_tarihi', '-')}`)")
+                    st.markdown(f"4. **Çözüm ve Kapatılma Zamanı:** `{t.get('cozum_tarihi', 'Henüz tamamlanmadı')}`")
+                    
+                    if t.get('yönetici_notu') and t.get('yönetici_notu') != "Henüz not eklenmedi":
+                        st.info(f"**Kurum / Müdür Notu:** {t.get('yönetici_notu')}")
+                        
+                    c_f1, c_f2 = st.columns(2)
+                    with c_f1:
+                        st.markdown("**Vatandaş Bildirim Fotoğrafı:**")
+                        if t.get('fotograf_b64'):
+                            try:
+                                st.image(Image.open(io.BytesIO(base64.b64decode(t['fotograf_b64']))), caption="Vatandaş Görseli", use_container_width=True)
+                            except:
+                                st.write("Görsel yüklenemedi.")
+                        else:
+                            st.write("Fotoğraf yok.")
+                    with c_f2:
+                        st.markdown("**Saha Çözüm Bitiş Fotoğrafı:**")
+                        if t.get('saha_fotograf_b64'):
+                            try:
+                                st.image(Image.open(io.BytesIO(base64.b64decode(t['saha_fotograf_b64']))), caption="Saha Çözüm Görseli", use_container_width=True)
+                            except:
+                                st.write("Saha görseli yüklenemedi.")
+                        else:
+                            st.write("Saha personeli henüz çözüm fotoğrafı yüklemedi.")
+                else:
+                    st.warning("Bu takip numarasına ait kayıt bulunamadı.")
+            except Exception as e:
+                st.error(f"Sorgulama hatası: {e}")
+        else:
+            st.warning("Lütfen bir takip numarası girin.")
+
+with tab3:
     st.header("Kurum ve Personel Giriş Paneli")
-    st.info("💡 **Güvenlik Notu:** Bu alan yalnızca yetkili kurum yöneticilerine, amirlere ve süper adminlere özeldir.")
+    st.info("Güvenlik Notu: Bu alan yetkili kurum yöneticilerine, amirlere ve saha personeline özeldir.")
 
     if not st.session_state["personel_giris"]:
         tel_giris = st.text_input("Telefon Numarası (Örn: 0555...)", key="personel_tel_input")
@@ -402,39 +491,29 @@ with tab2:
             else:
                 st.warning("Lütfen telefon numaranızı ve şifrenizi giriniz.")
 
-    # Oturum Açıldığında (Yönetici / Admin Yetkili Alanı)
     if st.session_state["personel_giris"]:
         personel = st.session_state["giris_yapan_personel"]
         st.success(f"Hoş geldiniz, {personel['ad_soyad']} ({personel['unvan']} - {personel['sorumlu_birim']})")
         
-        if st.button("🚪 Çıkış Yap", key="cikis_yap_btn"):
+        if st.button("Çıkış Yap", key="cikis_yap_btn"):
             st.session_state["personel_giris"] = False
             st.session_state["giris_yapan_personel"] = None
             st.rerun()
 
-        # Süper Admin Kontrolü
         unvan_degeri = str(personel.get("unvan", "")).strip().lower()
         is_super_admin = unvan_degeri in ["süper_admin", "süper admin", "super_admin", "super admin"]
+        is_saha_personeli = unvan_degeri in ["saha personeli", "usta", "teknisyen", "operatör", "saha ekip sorumlusu"]
 
         # =========================================================================
         # 👑 1. SÜPER ADMIN PANELI
         # =========================================================================
         if is_super_admin:
             st.markdown("---")
-            st.subheader("👑 Süper Admin - Platform Yönetim Paneli")
-            st.info("Platform Sahibi olarak paydaş kurumları, alt birimleri ve bu birimlerin yöneticilerini yönetebilir, mükerrer kayıtları silebilirsiniz.")
+            st.subheader("Süper Admin - Platform Yönetim Paneli")
             
-            admin_secim = st.radio(
-                "Yönetim İşlemi Seçin:", 
-                [
-                    "📊 Sistem Kurum ve Yetkili Matrisi (Genel Liste)", 
-                    "👥 Kurum Yöneticisi / Müdür Ekle"
-                ], 
-                key="admin_radio_secim"
-            )
+            admin_secim = st.radio("Yönetim İşlemi Seçin:", ["Sistem Kurum ve Yetkili Matrisi", "Kurum Yöneticisi / Müdür Ekle"], key="admin_radio_secim")
             
-            if admin_secim == "📊 Sistem Kurum ve Yetkili Matrisi (Genel Liste)":
-                st.markdown("#### 🌐 Supabase Kayıtlı Kurumlar, Birimler ve Yöneticiler")
+            if admin_secim == "Sistem Kurum ve Yetkili Matrisi":
                 try:
                     df_all_pers = conn.query("SELECT * FROM personeller;", ttl=0)
                     tum_personeller = df_all_pers.to_dict('records') if not df_all_pers.empty else []
@@ -442,148 +521,157 @@ with tab2:
                     for kurum in kurumlar_listesi:
                         kurum_adi = kurum["kurum_adi"]
                         birim_adi = kurum["alt_bolum"]
-                        
                         ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim") == birim_adi]
                         
-                        with st.expander(f"🏛️ {kurum_adi} ➔ {birim_adi}"):
+                        with st.expander(f"{kurum_adi} ➔ {birim_adi}"):
                             if ilgili_yetkililer:
-                                st.markdown("**Atanmış Kurum Yöneticileri:**")
                                 for y in ilgili_yetkililer:
                                     col_info, col_del = st.columns([4, 1])
                                     with col_info:
-                                        st.write(f"- 👤 **{y['ad_soyad']}** | Tel: `{y.get('telefon_no')}` | Unvan: *{y['unvan']}*")
+                                        st.write(f"- **{y['ad_soyad']}** | Tel: `{y.get('telefon_no')}` | Unvan: *{y['unvan']}*")
                                     with col_del:
-                                        if st.button("🗑️ Sil", key=f"del_sup_{y.get('telefon_no')}_{y.get('ad_soyad')}"):
-                                            try:
-                                                with conn.session as s:
-                                                    s.execute(
-                                                        text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"),
-                                                        {"tel": y.get('telefon_no'), "ad": y.get('ad_soyad')}
-                                                    )
-                                                    s.commit()
-                                                st.success(f"✅ {y['ad_soyad']} başarıyla silindi!")
-                                                st.rerun()
-                                            except Exception as e:
-                                                st.error(f"Silme hatası: {e}")
+                                        if st.button("Sil", key=f"del_sup_{y.get('telefon_no')}_{y.get('ad_soyad')}"):
+                                            with conn.session as s:
+                                                s.execute(text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"), {"tel": y.get('telefon_no'), "ad": y.get('ad_soyad')})
+                                                s.commit()
+                                            st.success("Personel silindi!")
+                                            st.rerun()
                             else:
-                                st.warning("⚠️ Bu birime henüz kurum yöneticisi atanmamış.")
+                                st.warning("Bu birime henüz yetkili atanmamış.")
                 except Exception as e:
-                    st.error(f"Matris yüklenirken hata: {e}")
+                    st.error(f"Hata: {e}")
 
-            elif admin_secim == "👥 Kurum Yöneticisi / Müdür Ekle":
-                st.markdown("#### ➕ Supabase Veritabanına Kurum Yöneticisi Tanımla")
+            elif admin_secim == "Kurum Yöneticisi / Müdür Ekle":
                 p_ad = st.text_input("Yöneticinin Adı Soyadı", key="p_ad_input")
                 p_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)", key="p_tel_input")
                 p_sifre = st.text_input("Şifre", type="password", key="p_sifre_input")
                 p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Fen İşleri Müdürü", "Su ve Kanalizasyon Amiri", "Park ve Bahçeler Amiri", "Zabıta Amiri"], key="p_unvan_select")
+                p_birim = st.selectbox("Sorumlu Olduğu Kurum / Birim", [k["alt_bolum"] for k in kurumlar_listesi], key="p_birim_select")
                 
-                birim_secenekleri = [k["alt_bolum"] for k in kurumlar_listesi]
-                p_birim = st.selectbox("Sorumlu Olduğu Kurum / Birim", birim_secenekleri, key="p_birim_select")
-                
-                if st.button("Supabase'e Kurum Yöneticisi Kaydet", key="yonetici_olustur_btn", type="primary"):
+                if st.button("Kaydet", key="yonetici_olustur_btn", type="primary"):
                     if p_ad and p_tel and p_sifre:
-                        try:
-                            with conn.session as s:
-                                s.execute(
-                                    text("""
-                                        INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim)
-                                        VALUES (:ad, :tel, :sifre, :unvan, :birim)
-                                    """),
-                                    {
-                                        "ad": p_ad,
-                                        "tel": p_tel.strip(),
-                                        "sifre": p_sifre,
-                                        "unvan": p_unvan,
-                                        "birim": p_birim
-                                    }
-                                )
-                                s.commit()
-                    
-                            st.success(f"✅ {p_ad} başarıyla kurum yöneticisi olarak eklendi!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Kayıt eklenirken hata oluştu: {e}")
-                    else:
-                        st.error("Lütfen zorunlu alanları doldurun.")
+                        with conn.session as s:
+                            s.execute(text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), {"ad": p_ad, "tel": p_tel.strip(), "sifre": p_sifre, "unvan": p_unvan, "birim": p_birim})
+                            s.commit()
+                        st.success("Yönetici eklendi!")
+                        st.rerun()
 
         # =========================================================================
-        # 🏛️ 2. KURUM YETKİLİSİ / MÜDÜR PANELI
+        # 🛠️ 2. SAHA PERSONELİ PANELI
         # =========================================================================
-        else:
+        elif is_saha_personeli:
             st.markdown("---")
-            st.subheader(f"📋 {personel['sorumlu_birim']} - Kurum Operasyon Paneli")
-            st.info("Kurum yöneticisi olarak biriminize gelen talepleri inceleyebilir, **kabul edebilir veya gerekçeli olarak reddedebilir**, onaylananları saha personeline yönlendirebilirsiniz.")
+            st.subheader(f"Saha Operasyon Paneli - {personel['ad_soyad']}")
+            st.info("Size atanan işleri buradan görebilir, tamamlandığında **Saha Çözüm Fotoğrafı** yükleyip kurum müdürünün onayına gönderebilirsiniz.")
             
-            # --- BİRİM PERSONEL YÖNETİMİ VE MÜKERRER KAYIT SİLME ---
-            with st.expander("👥 Birim Saha Personelleri, Yeni Personel Ekle ve Mükerrer Kayıt Sil"):
-                st.markdown(f"**{personel['sorumlu_birim']}** biriminize bağlı saha personellerini buradan listeleyebilir, ekleyebilir veya mükerrer/hatalı kayıtları silebilirsiniz.")
+            try:
+                df_t_saha = conn.query("SELECT * FROM talepler WHERE atanan_personel = :personel_ad;", params={"personel_ad": personel['ad_soyad']}, ttl=0)
+                saha_gorevleri = df_t_saha.to_dict('records') if not df_t_saha.empty else []
+            except Exception as e:
+                saha_gorevleri = []
+                st.error(f"Görevler yüklenirken hata: {e}")
                 
-                try:
-                    df_birim_pers = conn.query(
-                        "SELECT * FROM personeller WHERE sorumlu_birim = :birim AND unvan IN ('Saha Personeli', 'Usta', 'Teknisyen', 'Operatör', 'Saha Ekip Sorumlusu');", 
-                        params={"birim": personel['sorumlu_birim']}, 
-                        ttl=0
-                    )
-                    if not df_birim_pers.empty:
-                        st.markdown("**Mevcut Birim Saha Personelleri:**")
-                        for _, bp in df_birim_pers.iterrows():
-                            c_info, c_del = st.columns([4, 1])
-                            with c_info:
-                                st.write(f"- 👤 **{bp['ad_soyad']}** | Tel: `{bp.get('telefon_no')}` | Unvan: *{bp['unvan']}*")
-                            with c_del:
-                                if st.button("🗑️ Sil", key=f"del_birim_{bp.get('telefon_no')}_{bp.get('ad_soyad')}"):
-                                    try:
-                                        with conn.session as s:
-                                            s.execute(
-                                                text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"),
-                                                {"tel": bp.get('telefon_no'), "ad": bp.get('ad_soyad')}
-                                            )
-                                            s.commit()
-                                        st.success(f"✅ {bp['ad_soyad']} başarıyla silindi!")
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Personel silinirken hata: {e}")
-                    else:
-                        st.info("Bu birime kayıtlı henüz saha personeli bulunmamaktadır.")
-                except Exception as e:
-                    st.error(f"Personeller listelenirken hata: {e}")
-
-                st.markdown("---")
-                st.markdown("#### ➕ Yeni Saha Personeli Tanımla")
-                
-                with st.form("birim_alt_personel_form"):
-                    alt_ad = st.text_input("Personelin Adı Soyadı", key="birim_alt_ad")
-                    alt_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)", key="birim_alt_tel")
-                    alt_sifre = st.text_input("Şifre", type="password", key="birim_alt_sifre")
-                    alt_unvan = st.selectbox("Unvan", ["Saha Personeli", "Usta", "Teknisyen", "Operatör", "Saha Ekip Sorumlusu"], key="birim_alt_unvan")
+            if not saha_gorevleri:
+                st.info("Üzerinize atanmış aktif saha görevi bulunmamaktadır.")
+            
+            for idx, gorev in enumerate(saha_gorevleri):
+                with st.expander(f" Görev ID: {gorev['talep_id']} - {gorev['alt_kategori']} ({gorev['durum']})"):
+                    st.write(f"**Açıklama:** {gorev['aciklama']}")
+                    st.write(f"**Konum:** {gorev['gps_konum']}")
                     
-                    alt_kaydet_btn = st.form_submit_button("Birimime Saha Personeli Kaydet")
+                    lat = gorev.get('enlem')
+                    lon = gorev.get('boylam')
+                    if lat and lon:
+                        maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+                        st.markdown(f"**[Google Haritalar'da Rotayı Aç]({maps_url})**", unsafe_allow_html=True)
                     
-                    if alt_kaydet_btn:
-                        if alt_ad and alt_tel and alt_sifre:
+                    if gorev.get('fotograf_b64'):
+                        st.markdown("**Vatandaş Hasar Görseli:**")
+                        try:
+                            st.image(Image.open(io.BytesIO(base64.b64decode(gorev['fotograf_b64']))), use_container_width=True)
+                        except:
+                            pass
+                            
+                    st.markdown("---")
+                    st.markdown("**Sahada Yapılan İşi Kanıtlama (Çözüm Fotoğrafı Yükle):**")
+                    
+                    saha_foto_yukle = st.file_uploader("Çözüm Sonrası Fotoğraf Yükle", type=["jpg", "jpeg", "png"], key=f"saha_up_{gorev['talep_id']}_{idx}")
+                    
+                    if st.button(f"Talebi Çözüldü Olarak Müdüre Gönder ({gorev['talep_id']})", key=f"saha_gonder_{gorev['talep_id']}_{idx}", type="primary"):
+                        if saha_foto_yukle is not None:
+                            s_foto_adi = saha_foto_yukle.name
+                            s_foto_b64 = base64.b64encode(saha_foto_yukle.getvalue()).decode("utf-8")
+                            simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            
                             try:
+                                q_saha_upd = """
+                                    UPDATE talepler 
+                                    SET durum = :durum, 
+                                        saha_fotograf_adi = :f_adi, 
+                                        saha_fotograf_b64 = :f_b64,
+                                        guncelleme_tarihi = :g_tarih
+                                    WHERE talep_id = :tid
+                                """
                                 with conn.session as s:
                                     s.execute(
-                                        text("""
-                                            INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim)
-                                            VALUES (:ad, :tel, :sifre, :unvan, :birim)
-                                        """),
+                                        text(q_saha_upd),
                                         {
-                                            "ad": alt_ad,
-                                            "tel": alt_tel.strip(),
-                                            "sifre": alt_sifre,
-                                            "unvan": alt_unvan,
-                                            "birim": personel['sorumlu_birim']
+                                            "durum": "Saha Çözümü Tamamlandı (Müdür Onayı Bekliyor)",
+                                            "f_adi": s_foto_adi,
+                                            "f_b64": s_foto_b64,
+                                            "g_tarih": simdiki_zaman,
+                                            "tid": gorev['talep_id']
                                         }
                                     )
                                     s.commit()
-                                st.success(f"✅ {alt_ad} başarıyla {personel['sorumlu_birim']} birimine personel olarak eklendi!")
+                                st.success("Çözüm fotoğrafı ve durumu müdür onayına başarıyla gönderildi!")
                                 st.rerun()
                             except Exception as e:
-                                st.error(f"Personel eklenirken hata oluştu: {e}")
+                                st.error(f"Güncelleme hatası: {e}")
                         else:
-                            st.warning("Lütfen zorunlu alanları doldurun.")
+                            st.warning("Lütfen sahadaki çözüme ait kanıt fotoğrafı yükleyiniz.")
+
+        # =========================================================================
+        # 🏛️ 3. KURUM YETKİLİSİ / MÜDÜR PANELI
+        # =========================================================================
+        else:
+            st.markdown("---")
+            st.subheader(f"{personel['sorumlu_birim']} - Kurum Operasyon Paneli")
+            st.info("Müdür olarak biriminize gelen talepleri inceler, saha personeline atar ve saha personelinden gelen çözümleri onaylayarak vatandaşa otomatik WhatsApp bilgilendirmesi tetiklersiniz.")
             
+            with st.expander("Birim Saha Personelleri ve Personel Yönetimi"):
+                try:
+                    df_birim_pers = conn.query("SELECT * FROM personeller WHERE sorumlu_birim = :birim AND unvan IN ('Saha Personeli', 'Usta', 'Teknisyen', 'Operatör', 'Saha Ekip Sorumlusu');", params={"birim": personel['sorumlu_birim']}, ttl=0)
+                    if not df_birim_pers.empty:
+                        for _, bp in df_birim_pers.iterrows():
+                            c_info, c_del = st.columns([4, 1])
+                            with c_info:
+                                st.write(f"- **{bp['ad_soyad']}** | Tel: `{bp.get('telefon_no')}` | Unvan: *{bp['unvan']}*")
+                            with c_del:
+                                if st.button("Sil", key=f"del_birim_{bp.get('telefon_no')}_{bp.get('ad_soyad')}"):
+                                    with conn.session as s:
+                                        s.execute(text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"), {"tel": bp.get('telefon_no'), "ad": bp.get('ad_soyad')})
+                                        s.commit()
+                                    st.success("Silindi!")
+                                    st.rerun()
+                except Exception as e:
+                    st.error(f"Hata: {e}")
+
+                st.markdown("#### Yeni Saha Personeli Tanımla")
+                with st.form("birim_alt_personel_form"):
+                    alt_ad = st.text_input("Personelin Adı Soyadı", key="birim_alt_ad")
+                    alt_tel = st.text_input("Telefon Numarası (Örn: 0555...)", key="birim_alt_tel")
+                    alt_sifre = st.text_input("Şifre", type="password", key="birim_alt_sifre")
+                    alt_unvan = st.selectbox("Unvan", ["Saha Personeli", "Usta", "Teknisyen", "Operatör", "Saha Ekip Sorumlusu"], key="birim_alt_unvan")
+                    
+                    if st.form_submit_button("Birimime Saha Personeli Kaydet"):
+                        if alt_ad and alt_tel and alt_sifre:
+                            with conn.session as s:
+                                s.execute(text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), {"ad": alt_ad, "tel": alt_tel.strip(), "sifre": alt_sifre, "unvan": alt_unvan, "birim": personel['sorumlu_birim']})
+                                s.commit()
+                            st.success("Saha personeli eklendi!")
+                            st.rerun()
+
             st.markdown("---")
             try:
                 df_t = conn.query("SELECT * FROM talepler;", ttl=0)
@@ -598,86 +686,81 @@ with tab2:
                 st.info("Biriminize ait aktif talep bulunmamaktadır.")
             
             for idx, talep in enumerate(gosterilecek_talepler):
-                with st.expander(f"📌 {talep['talep_id']} - {talep['alt_kategori']} ({talep['durum']})"):
+                with st.expander(f"Talep ID: {talep['talep_id']} - {talep['alt_kategori']} ({talep['durum']})"):
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.markdown(f"**Vatandaş:** {talep['ad_soyad']}")
-                        st.markdown(f"**Telefon:** {talep['telefon_no']}")
-                        st.markdown(f"**Sorumlu Kurum:** {talep.get('sorumlu_kurum', 'Belediye')}")
-                        st.markdown(f"**Konum:** {talep['gps_konum']}")
-                        st.markdown(f"**Mevcut Durum:** {talep.get('durum', 'Yeni')}")
-                        st.markdown(f"**Atanan Saha Personeli:** {talep.get('atanan_personel', 'Atanmadı')}")
-                        st.markdown(f"**Açıklama:** {talep['aciklama']}")
-                        st.markdown(f"**Yönetici Notu / Red Gerekçesi:** {talep.get('yönetici_notu', 'Yok')}")
-                        
-                        st.markdown("---")
-                        st.markdown("🕒 **Zaman Damgaları & Denetim İzleri:**")
-                        st.markdown(f"- 📝 **Kayıt Zamanı:** `{talep.get('olusturma_tarihi', 'Bilinmiyor')}`")
-                        st.markdown(f"- ⚙️ **Yönetici İşlem Zamanı:** `{talep.get('guncelleme_tarihi', 'Henüz işlem yapılmadı')}`")
-                        st.markdown(f"- ✅ **Saha Çözüm Zamanı:** `{talep.get('cozum_tarihi', 'Henüz çözülmedi')}`")
+                        st.write(f"**Vatandaş:** {talep['ad_soyad']}")
+                        st.write(f"**Telefon:** {talep['telefon_no']}")
+                        st.write(f"**Durum:** {talep.get('durum')}")
+                        st.write(f"**Atanan Personel:** {talep.get('atanan_personel', 'Atanmadı')}")
+                        st.write(f"**Açıklama:** {talep['aciklama']}")
                         
                         lat = talep.get('enlem')
                         lon = talep.get('boylam')
                         if lat and lon:
                             maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-                            st.markdown(f"🗺️ **[Google Haritalar'da Aç ve Rota Oluştur]({maps_url})**", unsafe_allow_html=True)
+                            st.markdown(f"**[Google Haritalar'da Aç]({maps_url})**", unsafe_allow_html=True)
                         
-                        if talep.get('atanan_personel') != "Atanmadı":
-                            wa_mesaj = f"🔔 *Yeni Saha Görevi ({talep['talep_id']})*\n*Kategori:* {talep['alt_kategori']}\n*Açıklama:* {talep['aciklama']}\n*Konum:* https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-                            encoded_msg = urllib.parse.quote(wa_mesaj)
-                            wa_url = f"https://wa.me/?text={encoded_msg}"
-                            st.markdown(f"💬 **[WhatsApp ile Saha Personeline Gönder]({wa_url})**", unsafe_allow_html=True)
+                        # WhatsApp Otomasyonu (Şifresiz Doğrudan Hasar Görseli Linki Dahil!)
+                        atanan_kisi_adi = talep.get('atanan_personel')
+                        if atanan_kisi_adi and atanan_kisi_adi != "Atanmadı":
+                            try:
+                                df_p_tel = conn.query("SELECT telefon_no FROM personeller WHERE ad_soyad = :p_ad;", params={"p_ad": atanan_kisi_adi}, ttl=0)
+                                hedef_tel = df_p_tel.iloc[0]['telefon_no'].strip() if not df_p_tel.empty else ""
+                                
+                                gorsel_linki = f"{APP_BASE_URL}/?gorsel={talep['talep_id']}"
+                                gorsel_satiri = f"\nHasar Fotografi (Sifresiz Goruntule): {gorsel_linki}" if talep.get('fotograf_b64') else ""
+                                
+                                wa_mesaj = f"Yeni Saha Gorevi ({talep['talep_id']})\nKategori: {talep['alt_kategori']}\nAciklama: {talep['aciklama']}\nKonum: https://www.google.com/maps/search/?api=1&query={lat},{lon}{gorsel_satiri}"
+                                wa_url = f"https://wa.me/{hedef_tel}?text={urllib.parse.quote(wa_mesaj)}"
+                                st.markdown(f"**[WhatsApp ile Saha Personeline Otomatik Gönder]({wa_url})**", unsafe_allow_html=True)
+                            except:
+                                pass
 
                         if talep.get('durum') == "Çözüldü - Kapatıldı":
                             vatandas_tel = talep.get('telefon_no', '').strip()
-                            vat_mesaj = f"Sayın {talep['ad_soyad']}, {talep['talep_id']} numaralı talebiniz kurumumuz tarafından başarıyla çözümlenmiştir. Sağlıklı günler dileriz."
-                            encoded_vat_msg = urllib.parse.quote(vat_mesaj)
-                            vat_wa_url = f"https://wa.me/{vatandas_tel}?text={encoded_vat_msg}"
-                            st.markdown(f"✅ **[Vatandaşa WhatsApp ile Bilgi Ver]({vat_wa_url})**", unsafe_allow_html=True)
+                            vat_mesaj = f"Sayin {talep['ad_soyad']}, {talep['talep_id']} numarali talebiniz kurumumuz tarafindan basariyla cozumlenmistir. Saglikli gunler dileriz."
+                            vat_wa_url = f"https://wa.me/{vatandas_tel}?text={urllib.parse.quote(vat_mesaj)}"
+                            st.markdown(f"**[Vatandaşa WhatsApp ile Bilgi Gönder]({vat_wa_url})**", unsafe_allow_html=True)
 
                     with col2:
-                        st.markdown("📷 **Vatandaş Hasar Fotoğrafı:**")
-                        foto_b64_data = talep.get('fotograf_b64', '')
-                        if foto_b64_data:
+                        st.markdown("**Vatandaş Hasar Fotoğrafı:**")
+                        if talep.get('fotograf_b64'):
                             try:
-                                image_bytes = base64.b64decode(foto_b64_data)
-                                image = Image.open(io.BytesIO(image_bytes))
-                                st.image(image, caption="Vatandaş Görseli", use_container_width=True)
-                            except Exception:
-                                st.info("Görsel yüklenemedi.")
+                                st.image(Image.open(io.BytesIO(base64.b64decode(talep['fotograf_b64']))), caption="Vatandaş Görseli", use_container_width=True)
+                            except:
+                                st.write("Görsel yüklenemedi.")
                         else:
-                            st.info("Vatandaş fotoğraf yüklememiş.")
+                            st.write("Fotoğraf yok.")
 
                         st.markdown("---")
-                        st.markdown("🛠️ **Saha Çözüm / Bitiş Fotoğrafı:**")
-                        saha_foto_b64 = talep.get('saha_fotograf_b64', '')
-                        if saha_foto_b64:
+                        st.markdown("**Sahadan Gelen Çözüm Fotoğrafı:**")
+                        if talep.get('saha_fotograf_b64'):
                             try:
-                                s_image_bytes = base64.b64decode(saha_foto_b64)
-                                s_image = Image.open(io.BytesIO(s_image_bytes))
-                                st.image(s_image, caption="Saha Çözüm Görseli", use_container_width=True)
-                            except Exception:
-                                st.info("Saha görseli çözülemedi.")
+                                st.image(Image.open(io.BytesIO(base64.b64decode(talep['saha_fotograf_b64']))), caption="Saha Çözüm Görseli", use_container_width=True)
+                            except:
+                                st.write("Saha görseli yüklenemedi.")
                         else:
-                            st.info("Saha bitiş fotoğrafı henüz yüklenmedi.")
+                            st.write("Saha personeli henüz fotoğraf yüklemedi.")
                     
                     st.markdown("---")
-                    st.markdown("⚙️ **Operasyon Yönetimi ve Kabul / Red Mekanizması**")
+                    st.markdown("**Operasyon Yönetimi ve Onay Mekanizması**")
                     
                     durumlar = [
                         "Yeni (İnceleme Bekliyor)", 
-                        "✅ Talep Kabul Edildi", 
-                        "❌ Talep Reddedildi (Gerekçeli)", 
+                        "Talep Kabul Edildi", 
+                        "Talep Reddedildi (Gerekçeli)", 
                         "Saha Ekibine Sevk Edildi", 
+                        "Saha Çözümü Tamamlandı (Müdür Onayı Bekliyor)",
                         "Çözüldü - Kapatıldı"
                     ]
                     mevcut_durum = talep.get('durum', durumlar[0])
                     durum_index = durumlar.index(mevcut_durum) if mevcut_durum in durumlar else 0
 
                     try:
-                        df_p_list = conn.query("SELECT ad_soyad FROM personeller;", ttl=0)
+                        df_p_list = conn.query("SELECT ad_soyad FROM personeller WHERE sorumlu_birim = :birim;", params={"birim": personel['sorumlu_birim']}, ttl=0)
                         personeller = ["Atanmadı"] + [p["ad_soyad"] for p in df_p_list.to_dict('records')] if not df_p_list.empty else ["Atanmadı"]
-                    except Exception:
+                    except:
                         personeller = ["Atanmadı"]
 
                     mevcut_personel = talep.get('atanan_personel', "Atanmadı")
@@ -686,31 +769,20 @@ with tab2:
                     with st.form(key=f"form_{talep['talep_id']}_{idx}"):
                         yeni_durum = st.selectbox("Talep İnceleme ve Durum Güncelle", durumlar, index=durum_index, key=f"durum_sel_{talep['talep_id']}_{idx}")
                         atanacak_kisi = st.selectbox("Saha Personeli Ata", personeller, index=personel_index, key=f"personel_sel_{talep['talep_id']}_{idx}")
-                        yonetici_notu_input = st.text_area("Yönetici Notu veya Red Gerekçesi Yazın", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
-                        saha_fotograf_yukleme = st.file_uploader("Sahadan Çözüm Fotoğrafı Yükle", type=["jpg", "jpeg", "png"], key=f"saha_foto_up_{talep['talep_id']}_{idx}")
+                        yonetici_notu_input = st.text_area("Yönetici Notu veya Red Gerekçesi", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
                         
-                        kaydet_buton = st.form_submit_button(f"💾 Kararı ve Güncellemeyi Kaydet ({talep['talep_id']})", type="primary")
+                        kaydet_buton = st.form_submit_button(f"Kararı Kaydet ({talep['talep_id']})", type="primary")
                         
                         if kaydet_buton:
                             if "Reddedildi" in yeni_durum and not yonetici_notu_input.strip():
-                                st.warning("⚠️ Talebi reddettiğiniz için lütfen bir ret gerekçesi (açıklama) yazınız.")
+                                st.warning("Talebi reddettiğiniz için lütfen bir ret gerekçesi yazınız.")
                             else:
                                 simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                guncelleme_tarihi = simdiki_zaman
-                                
                                 mevcut_cozum_tarihi = talep.get('cozum_tarihi', 'Henüz çözülmedi')
-                                if yeni_durum == "Çözüldü - Kapatıldı" and (not mevcut_cozum_tarihi or "Henüz" in mevcut_cozum_tarihi):
+                                if yeni_durum == "Çözüldü - Kapatıldı" and ("Henüz" in str(mevcut_cozum_tarihi)):
                                     cozum_tarihi = simdiki_zaman
                                 else:
                                     cozum_tarihi = mevcut_cozum_tarihi
-
-                                s_foto_adi = talep.get('saha_fotograf_adi', 'Yüklenmedi')
-                                s_foto_b64 = talep.get('saha_fotograf_b64', '')
-
-                                if saha_fotograf_yukleme is not None:
-                                    s_foto_adi = saha_fotograf_yukleme.name
-                                    s_bytes = saha_fotograf_yukleme.getvalue()
-                                    s_foto_b64 = base64.b64encode(s_bytes).decode("utf-8")
 
                                 try:
                                     q_upd = """
@@ -718,8 +790,6 @@ with tab2:
                                         SET durum = :durum, 
                                             atanan_personel = :personel, 
                                             yönetici_notu = :notu, 
-                                            saha_fotograf_adi = :foto_adi, 
-                                            saha_fotograf_b64 = :foto_b64,
                                             guncelleme_tarihi = :g_tarih,
                                             cozum_tarihi = :c_tarih
                                         WHERE talep_id = :tid
@@ -731,27 +801,25 @@ with tab2:
                                                 "durum": yeni_durum,
                                                 "personel": atanacak_kisi,
                                                 "notu": yonetici_notu_input,
-                                                "foto_adi": s_foto_adi,
-                                                "foto_b64": s_foto_b64,
-                                                "g_tarih": guncelleme_tarihi,
+                                                "g_tarih": simdiki_zaman,
                                                 "c_tarih": cozum_tarihi,
                                                 "tid": talep["talep_id"]
                                             }
                                         )
                                         s.commit()
                                         
-                                    st.success(f"✅ {talep['talep_id']} numaralı talep zaman damgalarıyla güncellendi!")
+                                    st.success("Talep başarıyla güncellendi!")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Güncelleme hatası: {e}")
 
             # =========================================================================
-            # 📊 GÜVENLİ ALAN: YAPAY ZEKA DESTEKLİ KURUMSAL RAPORLAR VE PDF İNDİRME
+            # 📊 YAPAY ZEKA DESTEKLİ KURUMSAL RAPORLAR VE PDF İNDİRME
             # =========================================================================
             st.markdown("---")
             st.markdown("---")
-            st.header("📊 Yapay Zeka Destekli Yönetici Raporu ve Analiz Merkezi")
-            st.info("Bu panel yalnızca yetkili yönetici ve amirlerin erişimine açık olup; zaman damgalarını, birim yüklerini ve coğrafi verileri analiz ederek başkanlık makamı için stratejik özetler ve resmi PDF çıktıları üretir.")
+            st.header("Yapay Zeka Destekli Yönetici Raporu ve Analiz Merkezi")
+            st.info("Zaman damgalarını, birim yüklerini ve coğrafi verileri analiz ederek başkanlık makamı için stratejik özetler ve resmi PDF çıktıları üretir.")
             
             try:
                 df_rapor = conn.query("SELECT * FROM talepler;", ttl=0)
@@ -770,7 +838,7 @@ with tab2:
                     
                     st.markdown("---")
                     
-                    st.subheader("🤖 Yapay Zeka Destekli Stratejik Yönetici Özeti")
+                    st.subheader("Yapay Zeka Destekli Stratejik Yönetici Özeti")
                     
                     en_cok_birim = "Fen İşleri Müdürlüğü"
                     if 'alt_bolum' in df_rapor.columns and not df_rapor['alt_bolum'].dropna().empty:
@@ -779,15 +847,14 @@ with tab2:
                     basari_orani = int((cozulen_talep / toplam_talep * 100)) if toplam_talep > 0 else 0
                     
                     ai_ozet_metni = f"""
-                    > **💡 Başkanlık ve Birim Amirliği Akıllı Sentezi:**
-                    > Sistemde kayıtlı toplam **{toplam_talep}** bildirim incelenmiştir. Bildirimlerin genel operasyonel başarı ve kapatılma oranı **%{basari_orani}** seviyesindedir. 
-                    > Yoğunluk analizine göre en fazla talep alan sorumlu birim **{en_cok_birim}** olarak öne çıkmaktadır. Kırsal mahallelerden gelen taleplerin coğrafi kümelenme gösterdiği, özellikle altyapı ve yol bozuklukları kategorisinde vatandaş bildirimlerinin ağırlık kazandığı tespit edilmiştir. 
-                    > **Öneri:** Kaynakların ve saha ekiplerinin en çok talep gelen hatlara yönlendirilmesi, ortalama çözüm süresini (SLA) optimize edecek ve vatandaş memnuniyetini maksimize edecektir.
+                    > **Başkanlık ve Birim Amirliği Akıllı Sentezi:**
+                    > Sistemde kayıtlı toplam **{toplam_talep}** bildirim incelenmiştir. Genel operasyonel başarı ve kapatılma oranı **%{basari_orani}** seviyesindedir. 
+                    > En fazla talep alan sorumlu birim **{en_cok_birim}** olarak öne çıkmaktadır. Kırsal mahallelerden gelen taleplerin coğrafi kümelenme gösterdiği, altyapı ve yol bozuklukları kategorisinde yoğunlaştığı tespit edilmiştir. 
+                    > **Öneri:** Kaynakların ve saha ekiplerinin en çok talep gelen hatlara yönlendirilmesi, ortalama çözüm süresini (SLA) optimize edecektir.
                     """
                     st.markdown(ai_ozet_metni)
                     
-                    # --- RESMİ PDF RAPOR İNDİRME BUTONU ---
-                    st.markdown("### 📄 Kurumsal Rapor Çıktısı")
+                    st.markdown("### Kurumsal Rapor Çıktısı")
                     pdf_bytes = yonetici_pdf_olustur(
                         df_rapor=df_rapor,
                         toplam=toplam_talep,
@@ -801,7 +868,7 @@ with tab2:
                     )
                     
                     st.download_button(
-                        label="📥 Resmi Yönetici Raporunu PDF Olarak İndir",
+                        label="Resmi Yönetici Raporunu PDF Olarak İndir",
                         data=pdf_bytes,
                         file_name=f"KentAsistan_Yonetici_Raporu_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
                         mime="application/pdf",
@@ -811,24 +878,20 @@ with tab2:
                     st.markdown("---")
                     
                     col_g1, col_g2 = st.columns(2)
-                    
                     with col_g1:
-                        st.markdown("#### 📂 Sorumlu Birimlere Göre İş Yükü Dağılımı")
+                        st.markdown("#### Sorumlu Birimlere Göre İş Yükü Dağılımı")
                         if 'alt_bolum' in df_rapor.columns:
-                            birim_counts = df_rapor['alt_bolum'].value_counts()
-                            st.bar_chart(birim_counts)
-                    
+                            st.bar_chart(df_rapor['alt_bolum'].value_counts())
                     with col_g2:
-                        st.markdown("#### 🏷️ Kategori Bazlı Dağılım")
+                        st.markdown("#### Kategori Bazlı Dağılım")
                         if 'alt_kategori' in df_rapor.columns:
-                            kat_counts = df_rapor['alt_kategori'].value_counts()
-                            st.bar_chart(kat_counts)
+                            st.bar_chart(df_rapor['alt_kategori'].value_counts())
                             
                     st.markdown("---")
-                    st.markdown("#### 📋 Detaylı Operasyon Veri Tablosu")
+                    st.markdown("#### Detaylı Operasyon Veri Tablosu")
                     st.dataframe(df_rapor[['talep_id', 'ad_soyad', 'alt_bolum', 'alt_kategori', 'durum', 'olusturma_tarihi', 'cozum_tarihi']], use_container_width=True)
                     
                 else:
-                    st.info("📊 Rapor oluşturulabilecek henüz kayıtlı talep bulunmamaktadır.")
+                    st.info("Rapor oluşturulabilecek henüz kayıtlı talep bulunmamaktadır.")
             except Exception as e:
                 st.error(f"Raporlar yüklenirken veri tabanı hatası oluştu: {e}")
