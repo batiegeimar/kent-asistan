@@ -6,7 +6,7 @@ import io
 import json
 import base64
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import pandas as pd
 from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
@@ -15,6 +15,13 @@ import os
 
 # Uygulama Canlı URL'si (WhatsApp görsel linki üretimi için)
 APP_BASE_URL = "https://kent-asistan-bpcusdhobee6vqmjbrcsxe.streamlit.app"
+
+# Türkiye Saat Dilimi (UTC+3) Ayarı
+TR_ZAMAN_DILIMI = timezone(timedelta(hours=3))
+
+def simdiki_tr_zaman():
+    """Gerçek Türkiye saatini (UTC+3) string formatında döndürür."""
+    return datetime.now(TR_ZAMAN_DILIMI).strftime("%Y-%m-%d %H:%M:%S")
 
 # Sayfa Yapılandırması ve Kurumsal Logo İkonu Entegrasyonu
 ikon_yolu = "logo.jpg" if os.path.exists("logo.jpg") else "🏙️"
@@ -216,7 +223,7 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.set_text_color(30, 41, 59)
     pdf.set_xy(10, 42)
     pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(0, 6, tr_temizle(f"Rapor Tarihi: {datetime.now().strftime('%d.%m.%Y %H:%M')}"), ln=True)
+    pdf.cell(0, 6, tr_temizle(f"Rapor Tarihi: {datetime.now(TR_ZAMAN_DILIMI).strftime('%d.%m.%Y %H:%M')}"), ln=True)
     pdf.cell(0, 6, tr_temizle(f"Duzenleyen Yetkili: {raporlayan_kisi} ({raporlayan_birim})"), ln=True)
     pdf.ln(4)
     
@@ -487,7 +494,7 @@ with tab1:
                 alt_bolum = birim_bilgi.get("birim_adi", eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü")
 
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
-                simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                simdiki_zaman = simdiki_tr_zaman()
                 
                 foto_adi = fotograf.name if fotograf is not None else "Fotoğraf Yok"
                 foto_b64 = base64.b64encode(fotograf.getvalue()).decode("utf-8") if fotograf is not None else ""
@@ -541,7 +548,7 @@ with tab1:
                             )
                             s.commit()
                             
-                        # --- VATANDAŞA TEYİT BİLDİRİMİ (Saha iş emri müdür onayından sonraya bırakıldı) ---
+                        # --- VATANDAŞA TEYİT BİLDİRİMİ ---
                         vatandas_mesaj = (
                             f"🏛️ *Yenipazar Belediyesi - Ortak Çözüm Masası*\n\n"
                             f"Sayın *{ad_soyad}*,\n"
@@ -776,7 +783,7 @@ with tab3:
                         if saha_foto_yukle is not None:
                             s_foto_adi = saha_foto_yukle.name
                             s_foto_b64 = base64.b64encode(saha_foto_yukle.getvalue()).decode("utf-8")
-                            simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            simdiki_zaman = simdiki_tr_zaman()
                             
                             try:
                                 q_saha_upd = """
@@ -852,7 +859,7 @@ with tab3:
                 sup_talepler = []
                 st.error(f"Talepler yüklenirken hata: {e}")
 
-            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum') == personel['sorumlu_birim']]
+            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum'] == personel['sorumlu_birim']]
             
             if not gosterilecek_talepler:
                 st.info("Biriminize ait aktif talep bulunmamaktadır.")
@@ -957,7 +964,7 @@ with tab3:
                             if "Reddedildi" in yeni_durum and not yonetici_notu_input.strip():
                                 st.warning("Talebi reddettiğiniz için lütfen bir ret gerekçesi yazınız.")
                             else:
-                                simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                simdiki_zaman = simdiki_tr_zaman()
                                 mevcut_cozum_tarihi = talep.get('cozum_tarihi', 'Henüz çözülmedi')
                                 if yeni_durum == "Çözüldü - Kapatıldı" and ("Henüz" in str(mevcut_cozum_tarihi)):
                                     cozum_tarihi = simdiki_zaman
@@ -1083,7 +1090,7 @@ with tab3:
                     st.download_button(
                         label="📥 Resmi Yönetici ve Kaynak Raporunu PDF Olarak İndir",
                         data=pdf_bytes,
-                        file_name=f"KentAsistan_Kaynak_Raporu_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                        file_name=f"KentAsistan_Kaynak_Raporu_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
                         mime="application/pdf",
                         type="primary",
                         key="yonetici_pdf_indir_btn",
