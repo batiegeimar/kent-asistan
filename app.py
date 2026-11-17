@@ -43,19 +43,17 @@ header[data-testid="stHeader"] { background: transparent !important; }
 .stApp { background-color: #f1f5f9 !important; }
 .block-container { padding-top: 1.2rem !important; padding-bottom: 3rem !important; max-width: 780px !important; }
 
-/* Kurumsal Üst Hero Banner (Yazılar Kesinlikle Beyaz ve Net) */
+/* Kurumsal Üst Hero Banner - Yazılar Kesinlikle Beyaz */
 .kent-hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 18px; padding: 22px 26px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25); margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.08); }
 .kent-hero img { width: 84px; height: 84px; object-fit: cover; border-radius: 14px; border: 2px solid rgba(56, 189, 248, 0.35); flex-shrink: 0; }
-.kent-hero-text h1 { color: #ffffff !important; font-size: 1.65rem !important; font-weight: 700 !important; margin: 0 0 4px 0 !important; padding: 0 !important; }
+.kent-hero-text h1 { color: #ffffff !important; font-size: 1.65rem !important; font-weight: 700 !important; margin: 0 0 4px 0 !important; padding: 0 !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 .kent-hero-text p { color: #e2e8f0 !important; font-size: 0.9rem !important; margin: 0 0 8px 0 !important; line-height: 1.4; }
-.kent-badge { display: inline-block; background: rgba(2, 132, 199, 0.3); color: #38bdf8 !important; border: 1px solid rgba(56, 189, 248, 0.4); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+.kent-badge { display: inline-block; background: rgba(2, 132, 199, 0.35); color: #38bdf8 !important; border: 1px solid rgba(56, 189, 248, 0.5); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
 
 /* Form Etiketleri ve Genel Metinler */
 .stSelectbox label p, .stTextInput label p, .stTextArea label p, .stRadio label p, .stFileUploader label p { color: #0f172a !important; font-weight: 600 !important; font-size: 0.92rem !important; }
 p, span { color: #334155; }
-
 [data-testid="stSidebar"] label, [data-testid="stSidebar"] span, [data-testid="stSidebar"] p { color: #ffffff !important; }
-
 .stSelectbox>div>div, .stTextInput>div>div>input, .stTextArea>div>div>textarea { background-color: #ffffff !important; color: #0f172a !important; border-radius: 10px !important; border-color: #cbd5e1 !important; }
 
 /* Modern Sekme (Tab) Tasarımı */
@@ -64,7 +62,7 @@ p, span { color: #334155; }
 .stTabs [aria-selected="true"] { background-color: #ffffff !important; color: #0f172a !important; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
 .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none !important; }
 
-/* Bölüm Kart Başlıkları (Yüksek Kontrast) */
+/* Bölüm Kart Başlıkları */
 .section-card-header { background: #ffffff; border-left: 4px solid #0284c7; padding: 14px 18px; border-radius: 10px; margin: 16px 0 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .section-card-header h4 { margin: 0 0 2px 0 !important; color: #0f172a !important; font-size: 1.02rem !important; font-weight: 700 !important; }
 .section-card-header span { color: #475569 !important; font-size: 0.84rem !important; font-weight: 500 !important; display: block; }
@@ -75,8 +73,12 @@ p, span { color: #334155; }
 
 iframe[title*="streamlit_geolocation"] { transform: scale(1.28); transform-origin: left center; margin: 6px 0 6px 4px; border-radius: 8px; }
 
-.stButton>button[kind="primary"], .stDownloadButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] { background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%) !important; color: #ffffff !important; border: none !important; border-radius: 12px !important; font-weight: 600 !important; font-size: 0.95rem !important; min-height: 48px !important; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important; transition: all 0.2s ease !important; }
+/* Birincil Butonlar (Yazılar Kesinlikle Beyaz ve Kalın) */
+.stButton>button[kind="primary"], .stDownloadButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] { background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%) !important; border: none !important; border-radius: 12px !important; min-height: 48px !important; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important; transition: all 0.2s ease !important; }
+.stButton>button[kind="primary"] p, .stDownloadButton>button[kind="primary"] p, .stFormSubmitButton>button[kind="primary"] p,
+.stButton>button[kind="primary"] span, .stDownloadButton>button[kind="primary"] span, .stFormSubmitButton>button[kind="primary"] span { color: #ffffff !important; font-weight: 700 !important; font-size: 1rem !important; }
 .stButton>button[kind="primary"]:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35) !important; }
+
 .stButton>button, .stDownloadButton>button, .stLinkButton>a { border-radius: 12px !important; font-weight: 600 !important; min-height: 46px !important; }
 
 div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
