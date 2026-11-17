@@ -6,6 +6,33 @@ import io
 import json
 import base64
 import urllib.parse
+
+def wa_link_olustur(tel, mesaj):
+    """Telefon numarasını uluslararası 905XXXXXXXXX formatına çevirip WhatsApp linki üretir."""
+    if not tel:
+        return "#"
+    temiz_tel = "".join(filter(str.isdigit, str(tel)))
+    if temiz_tel.startswith("0"):
+        temiz_tel = "9" + temiz_tel
+    elif not temiz_tel.startswith("90") and len(temiz_tel) == 10:
+        temiz_tel = "90" + temiz_tel
+        
+    encoded_mesaj = urllib.parse.quote(mesaj)
+    return f"https://wa.me/{temiz_tel}?text={encoded_mesaj}"
+
+def birim_bilgisi_getir(ana_kategori):
+    """Seçilen kategoriye göre Supabase 'birimler' tablosundan sorumlu ekibi çeker."""
+    try:
+        res = supabase.table("birimler").select("*").eq("kategori_adi", ana_kategori).eq("aktif", True).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]
+        # Eşleşme bulunamazsa varsayılan olarak 'Diğer / Genel' birimini getir
+        fallback = supabase.table("birimler").select("*").eq("kategori_adi", "Diğer / Genel").execute()
+        if fallback.data:
+            return fallback.data[0]
+    except Exception:
+        pass
+    return {"birim_adi": "Ortak Çözüm Masası", "sorumlu_tel": "905550000000"}
 from datetime import datetime
 import pandas as pd
 from shapely.geometry import Point, shape
