@@ -35,36 +35,28 @@ def logo_base64_getir(dosya_yolu="logo.jpg"):
 logo_b64 = logo_base64_getir()
 
 # --- KURUMSAL GOVTECH TASARIM & MOBİL PWA CSS ENJEKSİYONU ---
-st.markdown("""<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="KentAsistan"><meta name="mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0f172a">""", unsafe_allow_html=True)
-
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-html, body, [class*="css"] { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1e293b; }
+html, body, [class*="css"] { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 header[data-testid="stHeader"] { background: transparent !important; }
 #MainMenu, footer, .stDeployButton { display: none !important; }
-.stApp { background-color: #f1f5f9 !important; color: #1e293b !important; }
+.stApp { background-color: #f1f5f9 !important; }
 .block-container { padding-top: 1.2rem !important; padding-bottom: 3rem !important; max-width: 780px !important; }
 
-/* Kurumsal Üst Hero Banner */
-.kent-hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 18px; padding: 20px 24px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25); margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.08); }
+/* Kurumsal Üst Hero Banner (Yazılar Kesinlikle Beyaz ve Net) */
+.kent-hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 18px; padding: 22px 26px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25); margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.08); }
 .kent-hero img { width: 84px; height: 84px; object-fit: cover; border-radius: 14px; border: 2px solid rgba(56, 189, 248, 0.35); flex-shrink: 0; }
-.kent-hero-text h1 { color: #ffffff !important; font-size: 1.65rem !important; font-weight: 700 !important; margin: 0 0 4px 0 !important; padding: 0 !important; letter-spacing: -0.02em; }
-.kent-hero-text p { color: #cbd5e1 !important; font-size: 0.9rem !important; margin: 0 0 8px 0 !important; line-height: 1.4; }
-.kent-badge { display: inline-block; background: rgba(2, 132, 199, 0.25); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.03em; }
+.kent-hero-text h1 { color: #ffffff !important; font-size: 1.65rem !important; font-weight: 700 !important; margin: 0 0 4px 0 !important; padding: 0 !important; }
+.kent-hero-text p { color: #e2e8f0 !important; font-size: 0.9rem !important; margin: 0 0 8px 0 !important; line-height: 1.4; }
+.kent-badge { display: inline-block; background: rgba(2, 132, 199, 0.3); color: #38bdf8 !important; border: 1px solid rgba(56, 189, 248, 0.4); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
 
-/* Mobil Gece Modu / Kontrast Düzeltmeleri (Yazı Okunabilirliği) */
-.stSelectbox label, .stTextInput label, .stTextArea label, .stRadio label, p, span, div {
-    color: #1e293b !important;
-}
-[data-testid="stSidebar"] label, [data-testid="stSidebar"] span, [data-testid="stSidebar"] p {
-    color: #ffffff !important;
-}
-.stSelectbox>div>div, .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border-radius: 10px !important;
-    border-color: #cbd5e1 !important;
-}
+/* Form Etiketleri ve Genel Metinler */
+.stSelectbox label p, .stTextInput label p, .stTextArea label p, .stRadio label p, .stFileUploader label p { color: #0f172a !important; font-weight: 600 !important; font-size: 0.92rem !important; }
+p, span { color: #334155; }
+
+[data-testid="stSidebar"] label, [data-testid="stSidebar"] span, [data-testid="stSidebar"] p { color: #ffffff !important; }
+
+.stSelectbox>div>div, .stTextInput>div>div>input, .stTextArea>div>div>textarea { background-color: #ffffff !important; color: #0f172a !important; border-radius: 10px !important; border-color: #cbd5e1 !important; }
 
 /* Modern Sekme (Tab) Tasarımı */
 .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: #e2e8f0; padding: 6px; border-radius: 14px; margin-bottom: 16px; }
@@ -72,9 +64,10 @@ header[data-testid="stHeader"] { background: transparent !important; }
 .stTabs [aria-selected="true"] { background-color: #ffffff !important; color: #0f172a !important; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
 .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none !important; }
 
-.section-card-header { background: #ffffff; border-left: 4px solid #0284c7; padding: 12px 16px; border-radius: 10px; margin: 14px 0 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.section-card-header h4 { margin: 0; color: #0f172a !important; font-size: 1rem; font-weight: 700; }
-.section-card-header span { color: #64748b !important; font-size: 0.8rem; }
+/* Bölüm Kart Başlıkları (Yüksek Kontrast) */
+.section-card-header { background: #ffffff; border-left: 4px solid #0284c7; padding: 14px 18px; border-radius: 10px; margin: 16px 0 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.section-card-header h4 { margin: 0 0 2px 0 !important; color: #0f172a !important; font-size: 1.02rem !important; font-weight: 700 !important; }
+.section-card-header span { color: #475569 !important; font-size: 0.84rem !important; font-weight: 500 !important; display: block; }
 
 .gps-box { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px dashed #0284c7; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
 .gps-box-title { color: #0369a1 !important; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
