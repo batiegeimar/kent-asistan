@@ -562,23 +562,17 @@ with tab1:
                         )
                         
                         v_link = wa_link_olustur(telefon, vatandas_mesaj)
-                        s_link = wa_link_olustur(saha_tel, saha_mesaj)
                         
-                        st.success(f"🎉 Talebiniz **#{talep_id}** takip numarası ile başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}**")
+                        st.success(f"🎉 Talebiniz **#{talep_id}** takip numarası ile başarıyla kaydedildi! İnceleme için kuruma iletildi.")
                         
                         st.markdown("""
                         <div style="background:#f0fdf4; border:1px solid #86efac; padding:12px 16px; border-radius:12px; margin:10px 0;">
-                            <strong style="color:#166534;">📲 Hızlı WhatsApp Bildirim ve Yönlendirme</strong><br>
-                            <span style="color:#15803d; font-size:0.85rem;">Aşağıdaki butonları kullanarak tek tıkla vatandaşa teyit mesajı ve ilgili birime saha iş emri gönderebilirsiniz.</span>
+                            <strong style="color:#166534;">📲 Vatandaş Bilgilendirme</strong><br>
+                            <span style="color:#15803d; font-size:0.85rem;">Aşağıdaki butonu kullanarak vatandaşa takip numarasını içeren teyit mesajını iletebilirsiniz.</span>
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        col_wa1, col_wa2 = st.columns(2)
-                        with col_wa1:
-                            st.link_button("📱 Vatandaşa Teyit Gönder", v_link, type="primary", use_container_width=True)
-                        with col_wa2:
-                            st.link_button(f"🚨 {birim_adi}'ne İş Emri Gönder", s_link, type="primary", use_container_width=True)
-                            
+                        st.link_button("📱 Vatandaşa Teyit Gönder", v_link, type="primary", use_container_width=True)
                         st.balloons()
                     except Exception as e:
                         st.error(f"Veritabanı kayıt hatası: {e}")
