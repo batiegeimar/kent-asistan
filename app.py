@@ -57,9 +57,9 @@ def wa_link_olustur(tel, mesaj):
     return f"https://wa.me/{temiz_tel}?text={encoded_mesaj}"
 
 def birim_bilgisi_getir(ana_kategori):
-    """Seçilen kategoriye göre Supabase 'birimler' tablosundan sorumlu ekibi çeker."""
+    """Seçilen kategoriye göre Supabase 'birimler' tablosundan ilgili departmanı çeker."""
     if conn is None:
-        return {"birim_adi": "Ortak Çözüm Masası", "sorumlu_tel": "905550000000"}
+        return {"birim_adi": "Fen İşleri Müdürlüğü", "sorumlu_tel": "905550000000"}
     try:
         res = conn.query("SELECT * FROM birimler WHERE kategori_adi = :kat AND aktif = TRUE;", params={"kat": ana_kategori}, ttl=0)
         if not res.empty:
@@ -69,7 +69,7 @@ def birim_bilgisi_getir(ana_kategori):
             return fallback.iloc[0].to_dict()
     except Exception:
         pass
-    return {"birim_adi": "Ortak Çözüm Masası", "sorumlu_tel": "905550000000"}
+    return {"birim_adi": "Fen İşleri Müdürlüğü", "sorumlu_tel": "905550000000"}
 
 # --- KURUMSAL GOVTECH TASARIM & MOBİL PWA CSS ENJEKSİYONU ---
 st.markdown("""<style>
@@ -481,7 +481,10 @@ with tab1:
             else:
                 eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
                 sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Yenipazar Belediyesi"
-                alt_bolum = eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü"
+                
+                # Dinamik birim tablosundan birim adını çekiyoruz
+                birim_bilgi = birim_bilgisi_getir(secilen_ana_kategori)
+                alt_bolum = birim_bilgi.get("birim_adi", eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü")
 
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
                 simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -538,27 +541,13 @@ with tab1:
                             )
                             s.commit()
                             
-                        # --- WHATSAPP BİLDİRİM VE YÖNLENDİRME ---
-                        birim_info = birim_bilgisi_getir(secilen_ana_kategori)
-                        birim_adi = birim_info.get("birim_adi", alt_bolum)
-                        saha_tel = birim_info.get("sorumlu_tel", "905550000000")
-                        
+                        # --- VATANDAŞA TEYİT BİLDİRİMİ (Saha iş emri müdür onayından sonraya bırakıldı) ---
                         vatandas_mesaj = (
                             f"🏛️ *Yenipazar Belediyesi - Ortak Çözüm Masası*\n\n"
                             f"Sayın *{ad_soyad}*,\n"
                             f"*{secilen_ana_kategori} ({secilen_alt_kategori})* konulu bildiriminiz başarıyla kayıt altına alınmıştır.\n\n"
                             f"📌 *Takip Numaranız:* #{talep_id}\n"
                             f"🔍 Talebinizin çözüm sürecini KentAsistan portalından takip edebilirsiniz."
-                        )
-                        
-                        saha_mesaj = (
-                            f"🚨 *YENİ SAHA GÖREV ATAMASI (#{talep_id})*\n\n"
-                            f"📂 *Birim:* {birim_adi}\n"
-                            f"📌 *Kategori:* {secilen_ana_kategori} / {secilen_alt_kategori}\n"
-                            f"📝 *Açıklama:* {aciklama}\n"
-                            f"👤 *Vatandaş:* {ad_soyad} ({telefon})\n\n"
-                            f"📍 *Konum & Yol Tarifi:*\nhttps://www.google.com/maps?q={enlem},{boylam}\n\n"
-                            f"📸 *Saha Görev ve Görsel Kartı:*\n{APP_BASE_URL}/?gorsel={talep_id}"
                         )
                         
                         v_link = wa_link_olustur(telefon, vatandas_mesaj)
@@ -884,10 +873,10 @@ with tab3:
                             maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                             st.link_button("🗺️ Konumu Haritada Gör", maps_url, use_container_width=True)
                         
+                        # --- DOĞRU SAHA PERSONELİNE WHATSAPP İŞ EMRİ BUTONU ---
                         atanan_kisi_adi = talep.get('atanan_personel')
                         if atanan_kisi_adi and atanan_kisi_adi != "Atanmadı":
                             try:
-                                # Doğrudan personeller tablosundan atanan kişinin gerçek telefonunu çekiyoruz
                                 df_p_tel = conn.query("SELECT telefon_no FROM personeller WHERE ad_soyad = :p_ad;", params={"p_ad": atanan_kisi_adi}, ttl=0)
                                 hedef_tel = df_p_tel.iloc[0]['telefon_no'].strip() if not df_p_tel.empty else ""
                                 
@@ -907,6 +896,7 @@ with tab3:
                             except Exception as e:
                                 st.write(f"Personel telefon bilgisi alınamadı: {e}")
 
+                        # --- ÇÖZÜLDÜĞÜNDE VATANDAŞA WHATSAPP BİLDİRİMİ ---
                         if talep.get('durum') == "Çözüldü - Kapatıldı":
                             vatandas_tel = talep.get('telefon_no', '').strip()
                             vat_mesaj = f"Sayin {talep['ad_soyad']}, {talep['talep_id']} numarali talebiniz kurumumuz tarafindan basariyla cozumlenmistir. Saglikli gunler dileriz."
