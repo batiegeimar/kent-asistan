@@ -12,6 +12,9 @@ from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
 from fpdf import FPDF
 import os
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 
 # Uygulama Canlı URL'si (WhatsApp görsel linki üretimi için)
 APP_BASE_URL = "https://kent-asistan-bpcusdhobee6vqmjbrcsxe.streamlit.app"
@@ -77,6 +80,39 @@ def birim_bilgisi_getir(ana_kategori):
     except Exception:
         pass
     return {"birim_adi": "Fen İşleri Müdürlüğü", "sorumlu_tel": "905550000000"}
+
+# --- CBS / HARİTA GÖRSELİ ÜRETME MOTORU ---
+def cbs_harita_gorseli_uret(df_talepler, poligon):
+    """Yenipazar ilçe sınırını ve talep noktalarını matplotlib ile çizip dosya yolu döndürür."""
+    try:
+        plt.figure(figsize=(6, 4.5), dpi=150)
+        ax = plt.subplot(111)
+        
+        # Sınırları çiz
+        if poligon is not None:
+            x, y = poligon.exterior.xy
+            ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı")
+            ax.fill(x, y, color="#f0f9ff", alpha=0.4)
+            
+        # Talep noktalarını işle
+        if not df_talepler.empty and 'enlem' in df_talepler.columns and 'boylam' in df_talepler.columns:
+            g gecerli = df_talepler.dropna(subset=['enlem', 'boylam'])
+            if not gecerli.empty:
+                # Boylam X, Enlem Y eksenidir
+                ax.scatter(gecerli['boylam'], gecerli['enlem'], color="#dc2626", s=35, zorder=5, label="Arıza/Talep Noktaları")
+                
+        plt.title("KentAsistan - Coğrafi Risk ve Yoğunluk Haritası (Hotspot)", fontsize=10, fontweight="bold", color="#0f172a")
+        plt.xlabel("Boylam", fontsize=8)
+        plt.ylabel("Enlem", fontsize=8)
+        plt.legend(loc="upper right", fontsize=7)
+        plt.grid(True, linestyle="--", alpha=0.5)
+        
+        harita_yolu = "temp_cbs_harita.png"
+        plt.savefig(harita_yolu, bbox_inches="tight")
+        plt.close()
+        return harita_yolu
+    except Exception:
+        return None
 
 # --- KURUMSAL GOVTECH TASARIM & MOBİL PWA CSS ENJEKSİYONU ---
 st.markdown("""<style>
@@ -195,7 +231,7 @@ if "gorsel" in query_params:
             st.error(f"Veri getirme hatası: {e}")
     st.stop()
 
-# --- TÜRKÇE KARAKTER DÖNÜŞTÜRÜCÜ & PDF OLUŞTURMA MOTORU ---
+# --- TÜRKÇE KARAKTER DÖNÜŞTÜRÜCÜ & KESTİRİMCİ PDF RAPOR MOTORU ---
 def tr_temizle(metin):
     if not metin:
         return ""
@@ -204,7 +240,7 @@ def tr_temizle(metin):
     temizlenmis = ''.join(c for c in temizlenmis if ord(c) < 128)
     return temizlenmis
 
-def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok_birim, basari_orani, tasarruf_tl, ort_sla_saat, raporlayan_kisi, raporlayan_birim):
+def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok_birim, basari_orani, tasarruf_tl, ort_sla_saat, raporlayan_kisi, raporlayan_birim, poligon):
     pdf = FPDF()
     pdf.add_page()
     
@@ -212,84 +248,73 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.rect(0, 0, 210, 35, 'F')
     
     pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Helvetica", "B", 16)
+    pdf.set_font("Helvetica", "B", 15)
     pdf.set_xy(10, 10)
-    pdf.cell(0, 8, tr_temizle("KENTASISTAN - AKILLI KENT VE SAHA YONETIMI"), ln=True)
+    pdf.cell(0, 8, tr_temizle("KENTASISTAN - AKILLI KENT VE CBS YONETIM RAPORU"), ln=True)
     
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font("Helvetica", "", 9)
     pdf.set_x(10)
-    pdf.cell(0, 6, tr_temizle("Insan Kaynaklari, Ekonomik Verimlilik ve Stratejik Denetim Raporu"), ln=True)
+    pdf.cell(0, 6, tr_temizle("Kestirimci Bakim, Mekansal Risk Analizi ve Kaynak Optimizasyon Raporu"), ln=True)
     
     pdf.set_text_color(30, 41, 59)
-    pdf.set_xy(10, 42)
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(0, 6, tr_temizle(f"Rapor Tarihi: {datetime.now(TR_ZAMAN_DILIMI).strftime('%d.%m.%Y %H:%M')}"), ln=True)
-    pdf.cell(0, 6, tr_temizle(f"Duzenleyen Yetkili: {raporlayan_kisi} ({raporlayan_birim})"), ln=True)
-    pdf.ln(4)
+    pdf.set_xy(10, 38)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.cell(0, 5, tr_temizle(f"Rapor Tarihi: {datetime.now(TR_ZAMAN_DILIMI).strftime('%d.%m.%Y %H:%M')} | Duzenleyen: {raporlayan_kisi} ({raporlayan_birim})"), ln=True)
+    pdf.ln(2)
     
     pdf.set_fill_color(241, 245, 249)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 9, tr_temizle(" 1. OPERASYONEL VE EKONOMIK KAYNAK OZETI (KPI)"), ln=True, fill=True)
-    pdf.ln(3)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, tr_temizle(" 1. OPERASYONEL VE EKONOMIK KAYNAK OZETI (KPI)"), ln=True, fill=True)
+    pdf.ln(2)
     
-    pdf.set_font("Helvetica", "", 10)
-    pdf.cell(95, 7, tr_temizle(f"- Toplam Gelen Bildirim: {toplam}"), border=1)
-    pdf.cell(95, 7, tr_temizle(f"- Cozulen / Kapatilan Talep: {cozulen}"), border=1, ln=True)
-    pdf.cell(95, 7, tr_temizle(f"- Incelemede / Bekleyen: {bekleyen}"), border=1)
-    pdf.cell(95, 7, tr_temizle(f"- Reddedilen / Yersiz Talep: {reddedilen}"), border=1, ln=True)
-    pdf.cell(95, 7, tr_temizle(f"- Ortalama Cozum Suresi (SLA): {ort_sla_saat} Saat"), border=1)
-    pdf.cell(95, 7, tr_temizle(f"- Tahmini Rota/Saha Tasarrufu: {tasarruf_tl} TL"), border=1, ln=True)
-    pdf.ln(6)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.cell(95, 6, tr_temizle(f"- Toplam Bildirim: {toplam}"), border=1)
+    pdf.cell(95, 6, tr_temizle(f"- Cozulen Talep: {cozulen}"), border=1, ln=True)
+    pdf.cell(95, 6, tr_temizle(f"- Incelemede / Bekleyen: {bekleyen}"), border=1)
+    pdf.cell(95, 6, tr_temizle(f"- Reddedilen / Yersiz: {reddedilen}"), border=1, ln=True)
+    pdf.cell(95, 6, tr_temizle(f"- Ortalama Cozum (SLA): {ort_sla_saat} Saat"), border=1)
+    pdf.cell(95, 6, tr_temizle(f"- Tahmini Rota Tasarrufu: {tasarruf_tl} TL"), border=1, ln=True)
+    pdf.ln(4)
     
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 9, tr_temizle(" 2. YAPAY ZEKA DESTEKLI KAYNAK OPTIMIZASYON OZETI"), ln=True, fill=True)
-    pdf.ln(3)
+    # 2. MEKANSAL HARİTA ENTEGRASYONU
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, tr_temizle(" 2. CBS MEKANSAL YOGUNLUK VE RISK HARITASI"), ln=True, fill=True)
+    pdf.ln(2)
     
-    pdf.set_font("Helvetica", "", 10)
-    ozet_1 = f"- Operasyonel Basari Orani: %{basari_orani} seviyesindedir."
-    ozet_2 = f"- En Yogun Birim Analizi: En fazla is yuku '{en_cok_birim}' biriminde toplanmistir."
-    ozet_3 = f"- Ekonomik ve Insan Kaynagi Verimliligi: Dogrudan GPS ve gorsel teyitli sevk mekanizmasi sayesinde gereksiz saha kesif turlari onlenmis, yaklasik {tasarruf_tl} TL akaryakit ve adam/saat tasarrufu saglanmistir."
+    harita_dosyasi = cbs_harita_gorseli_uret(df_rapor, poligon)
+    if harita_dosyasi and os.path.exists(harita_dosyasi):
+        pdf.image(harita_dosyasi, x=35, w=140)
+        pdf.ln(2)
+        
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, tr_temizle(" 3. KESTIRIMCI BAKIM VE KAYNAK OPTIMIZASYONU"), ln=True, fill=True)
+    pdf.ln(2)
     
-    pdf.multi_cell(0, 6, tr_temizle(ozet_1))
+    pdf.set_font("Helvetica", "", 9)
+    ozet_1 = f"Genel operasyonel basari orani %{basari_orani} seviyesindedir. En yogun ariza yukunun '{en_cok_birim}' biriminde toplandigi tespit edilmistir."
+    ozet_2 = "CBS ve anlik fotograf dogrulamasi sayensinde gereksiz saha kesif turlari onlenmis, yaklasik " + f"{tasarruf_tl} TL" + " akaryakit ve adam/saat tasarrufu saglanmistir."
+    pdf.multi_cell(0, 5, tr_temizle(ozet_1))
     pdf.ln(1)
-    pdf.multi_cell(0, 6, tr_temizle(ozet_2))
-    pdf.ln(1)
-    pdf.multi_cell(0, 6, tr_temizle(ozet_3))
-    pdf.ln(6)
+    pdf.multi_cell(0, 5, tr_temizle(ozet_2))
+    pdf.ln(4)
     
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 9, tr_temizle(" 3. BIRIMLERE GORE IS YUKU DAGILIMI"), ln=True, fill=True)
-    pdf.ln(3)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 8, tr_temizle(" 4. DENETIM IZI VE SON TALEPLER"), ln=True, fill=True)
+    pdf.ln(2)
     
-    pdf.set_font("Helvetica", "", 10)
-    if 'alt_bolum' in df_rapor.columns:
-        birim_sayilari = df_rapor['alt_bolum'].value_counts()
-        for birim, sayi in birim_sayilari.items():
-            pdf.cell(0, 6, tr_temizle(f"- {birim}: {sayi} adet talep"), ln=True)
-    pdf.ln(6)
-    
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 9, tr_temizle(" 4. DENETIM IZI VE SON TALEPLER LISTESI"), ln=True, fill=True)
-    pdf.ln(3)
-    
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font("Helvetica", "B", 8)
     pdf.set_fill_color(226, 232, 240)
-    pdf.cell(28, 7, "Talep ID", border=1, fill=True)
-    pdf.cell(52, 7, tr_temizle("Alt Kategori"), border=1, fill=True)
-    pdf.cell(50, 7, tr_temizle("Sorumlu Personel"), border=1, fill=True)
-    pdf.cell(60, 7, tr_temizle("Mevcut Durum"), border=1, fill=True, ln=True)
+    pdf.cell(26, 6, "Talep ID", border=1, fill=True)
+    pdf.cell(54, 6, tr_temizle("Alt Kategori"), border=1, fill=True)
+    pdf.cell(50, 6, tr_temizle("Sorumlu Personel"), border=1, fill=True)
+    pdf.cell(60, 6, tr_temizle("Mevcut Durum"), border=1, fill=True, ln=True)
     
     pdf.set_font("Helvetica", "", 8)
-    for _, row in df_rapor.tail(15).iterrows():
-        t_id = tr_temizle(row.get('talep_id', ''))[:14]
-        alt_k = tr_temizle(row.get('alt_kategori', ''))[:28]
-        pers = tr_temizle(row.get('atanan_personel', ''))[:26]
-        durum = tr_temizle(row.get('durum', ''))[:32]
-        
-        pdf.cell(28, 6, t_id, border=1)
-        pdf.cell(52, 6, alt_k, border=1)
-        pdf.cell(50, 6, pers, border=1)
-        pdf.cell(60, 6, durum, border=1, ln=True)
+    for _, row in df_rapor.tail(10).iterrows():
+        pdf.cell(26, 5, tr_temizle(row.get('talep_id', ''))[:14], border=1)
+        pdf.cell(54, 5, tr_temizle(row.get('alt_kategori', ''))[:30], border=1)
+        pdf.cell(50, 5, tr_temizle(row.get('atanan_personel', ''))[:26], border=1)
+        pdf.cell(60, 5, tr_temizle(row.get('durum', ''))[:32], border=1, ln=True)
         
     return bytes(pdf.output())
 
@@ -489,7 +514,6 @@ with tab1:
                 eslesme = next((item for item in filtrelenmis_altlar if item["alt_kategori"] == secilen_alt_kategori), None)
                 sorumlu_kurum = eslesme["sorumlu_kurum"] if eslesme else "Yenipazar Belediyesi"
                 
-                # Dinamik birim tablosundan birim adını çekiyoruz
                 birim_bilgi = birim_bilgisi_getir(secilen_ana_kategori)
                 alt_bolum = birim_bilgi.get("birim_adi", eslesme["alt_bolum"] if eslesme else "Fen İşleri Müdürlüğü")
 
@@ -548,7 +572,6 @@ with tab1:
                             )
                             s.commit()
                             
-                        # --- VATANDAŞA TEYİT BİLDİRİMİ ---
                         vatandas_mesaj = (
                             f"🏛️ *Yenipazar Belediyesi - Ortak Çözüm Masası*\n\n"
                             f"Sayın *{ad_soyad}*,\n"
@@ -560,14 +583,6 @@ with tab1:
                         v_link = wa_link_olustur(telefon, vatandas_mesaj)
                         
                         st.success(f"🎉 Talebiniz **#{talep_id}** takip numarası ile başarıyla kaydedildi! İnceleme için kuruma iletildi.")
-                        
-                        st.markdown("""
-                        <div style="background:#f0fdf4; border:1px solid #86efac; padding:12px 16px; border-radius:12px; margin:10px 0;">
-                            <strong style="color:#166534;">📲 Vatandaş Bilgilendirme</strong><br>
-                            <span style="color:#15803d; font-size:0.85rem;">Aşağıdaki butonu kullanarak vatandaşa takip numarasını içeren teyit mesajını iletebilirsiniz.</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
                         st.link_button("📱 Vatandaşa Teyit Gönder", v_link, type="primary", use_container_width=True)
                         st.balloons()
                     except Exception as e:
@@ -880,7 +895,6 @@ with tab3:
                             maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                             st.link_button("🗺️ Konumu Haritada Gör", maps_url, use_container_width=True)
                         
-                        # --- DOĞRU SAHA PERSONELİNE WHATSAPP İŞ EMRİ BUTONU ---
                         atanan_kisi_adi = talep.get('atanan_personel')
                         if atanan_kisi_adi and atanan_kisi_adi != "Atanmadı":
                             try:
@@ -903,7 +917,6 @@ with tab3:
                             except Exception as e:
                                 st.write(f"Personel telefon bilgisi alınamadı: {e}")
 
-                        # --- ÇÖZÜLDÜĞÜNDE VATANDAŞA WHATSAPP BİLDİRİMİ ---
                         if talep.get('durum') == "Çözüldü - Kapatıldı":
                             vatandas_tel = talep.get('telefon_no', '').strip()
                             vat_mesaj = f"Sayin {talep['ad_soyad']}, {talep['talep_id']} numarali talebiniz kurumumuz tarafindan basariyla cozumlenmistir. Saglikli gunler dileriz."
@@ -1072,7 +1085,7 @@ with tab3:
                     """
                     st.markdown(ai_ozet_metni)
                     
-                    st.markdown("### 📄 Kurumsal Denetim ve Kaynak Raporu")
+                    st.markdown("### 📄 Kurumsal Denetim, CBS Harita ve Kaynak Raporu")
                     pdf_bytes = yonetici_pdf_olustur(
                         df_rapor=df_rapor,
                         toplam=toplam_talep,
@@ -1084,13 +1097,14 @@ with tab3:
                         tasarruf_tl=tahmini_tasarruf_tl,
                         ort_sla_saat=ort_sla_saat,
                         raporlayan_kisi=personel['ad_soyad'],
-                        raporlayan_birim=personel['sorumlu_birim']
+                        raporlayan_birim=personel['sorumlu_birim'],
+                        poligon=yenipazar_poligonu
                     )
                     
                     st.download_button(
-                        label="📥 Resmi Yönetici ve Kaynak Raporunu PDF Olarak İndir",
+                        label="📥 Resmi CBS Haritalı Yönetici Raporunu PDF Olarak İndir",
                         data=pdf_bytes,
-                        file_name=f"KentAsistan_Kaynak_Raporu_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
+                        file_name=f"KentAsistan_CBS_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
                         mime="application/pdf",
                         type="primary",
                         key="yonetici_pdf_indir_btn",
