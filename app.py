@@ -43,11 +43,19 @@ header[data-testid="stHeader"] { background: transparent !important; }
 .stApp { background-color: #f1f5f9 !important; }
 .block-container { padding-top: 1.2rem !important; padding-bottom: 3rem !important; max-width: 780px !important; }
 
-/* Kurumsal Üst Hero Banner - Yazılar Kesinlikle Beyaz */
+/* Kurumsal Üst Hero Banner - Marka İsmi En Ön Planda */
 .kent-hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 18px; padding: 22px 26px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25); margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.08); }
 .kent-hero img { width: 84px; height: 84px; object-fit: cover; border-radius: 14px; border: 2px solid rgba(56, 189, 248, 0.35); flex-shrink: 0; }
-.kent-hero-text h1 { color: #ffffff !important; font-size: 1.65rem !important; font-weight: 700 !important; margin: 0 0 4px 0 !important; padding: 0 !important; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-.kent-hero-text p { color: #e2e8f0 !important; font-size: 0.9rem !important; margin: 0 0 8px 0 !important; line-height: 1.4; }
+.kent-hero-text h1, .kent-hero-text h1 span, .kent-hero-text h1 div, .kent-hero-text [data-testid="stHeadingWithActionElements"] * { 
+    color: #ffffff !important; 
+    font-size: 2rem !important; 
+    font-weight: 800 !important; 
+    letter-spacing: -0.02em !important;
+    text-shadow: 0 2px 10px rgba(56, 189, 248, 0.45) !important; 
+    margin: 2px 0 6px 0 !important; 
+    padding: 0 !important; 
+}
+.kent-hero-text p { color: #e2e8f0 !important; font-size: 0.92rem !important; margin: 0 !important; line-height: 1.4; }
 .kent-badge { display: inline-block; background: rgba(2, 132, 199, 0.35); color: #38bdf8 !important; border: 1px solid rgba(56, 189, 248, 0.5); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
 
 /* Form Etiketleri ve Genel Metinler */
