@@ -88,18 +88,15 @@ def cbs_harita_gorseli_uret(df_talepler, poligon):
         plt.figure(figsize=(6, 4.5), dpi=150)
         ax = plt.subplot(111)
         
-        # Sınırları çiz
         if poligon is not None:
             x, y = poligon.exterior.xy
             ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı")
             ax.fill(x, y, color="#f0f9ff", alpha=0.4)
             
-        # Talep noktalarını işle
         if not df_talepler.empty and 'enlem' in df_talepler.columns and 'boylam' in df_talepler.columns:
-            g gecerli = df_talepler.dropna(subset=['enlem', 'boylam'])
-            if not gecerli.empty:
-                # Boylam X, Enlem Y eksenidir
-                ax.scatter(gecerli['boylam'], gecerli['enlem'], color="#dc2626", s=35, zorder=5, label="Arıza/Talep Noktaları")
+            gecerli_df = df_talepler.dropna(subset=['enlem', 'boylam'])
+            if not gecerli_df.empty:
+                ax.scatter(gecerli_df['boylam'], gecerli_df['enlem'], color="#dc2626", s=35, zorder=5, label="Arıza/Talep Noktaları")
                 
         plt.title("KentAsistan - Coğrafi Risk ve Yoğunluk Haritası (Hotspot)", fontsize=10, fontweight="bold", color="#0f172a")
         plt.xlabel("Boylam", fontsize=8)
@@ -123,7 +120,6 @@ header[data-testid="stHeader"] { background: transparent !important; }
 .stApp { background-color: #f1f5f9 !important; }
 .block-container { padding-top: 1.2rem !important; padding-bottom: 3rem !important; max-width: 780px !important; }
 
-/* Kurumsal Üst Hero Banner - Marka İsmi En Ön Planda */
 .kent-hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 18px; padding: 22px 26px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25); margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.08); }
 .kent-hero img { width: 84px; height: 84px; object-fit: cover; border-radius: 14px; border: 2px solid rgba(56, 189, 248, 0.35); flex-shrink: 0; }
 .kent-hero-text h1, .kent-hero-text h1 span, .kent-hero-text h1 div, .kent-hero-text [data-testid="stHeadingWithActionElements"] * { 
@@ -138,19 +134,16 @@ header[data-testid="stHeader"] { background: transparent !important; }
 .kent-hero-text p { color: #e2e8f0 !important; font-size: 0.92rem !important; margin: 0 !important; line-height: 1.4; }
 .kent-badge { display: inline-block; background: rgba(2, 132, 199, 0.35); color: #38bdf8 !important; border: 1px solid rgba(56, 189, 248, 0.5); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
 
-/* Form Etiketleri ve Genel Metinler */
 .stSelectbox label p, .stTextInput label p, .stTextArea label p, .stRadio label p, .stFileUploader label p { color: #0f172a !important; font-weight: 600 !important; font-size: 0.92rem !important; }
 p, span { color: #334155; }
 [data-testid="stSidebar"] label, [data-testid="stSidebar"] span, [data-testid="stSidebar"] p { color: #ffffff !important; }
 .stSelectbox>div>div, .stTextInput>div>div>input, .stTextArea>div>div>textarea { background-color: #ffffff !important; color: #0f172a !important; border-radius: 10px !important; border-color: #cbd5e1 !important; }
 
-/* Modern Sekme (Tab) Tasarımı */
 .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: #e2e8f0; padding: 6px; border-radius: 14px; margin-bottom: 16px; }
 .stTabs [data-baseweb="tab"] { height: 44px; border-radius: 10px; font-weight: 600; font-size: 0.88rem; color: #475569; padding: 0 14px; border: none !important; background-color: transparent; }
 .stTabs [aria-selected="true"] { background-color: #ffffff !important; color: #0f172a !important; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
 .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none !important; }
 
-/* Bölüm Kart Başlıkları */
 .section-card-header { background: #ffffff; border-left: 4px solid #0284c7; padding: 14px 18px; border-radius: 10px; margin: 16px 0 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .section-card-header h4 { margin: 0 0 2px 0 !important; color: #0f172a !important; font-size: 1.02rem !important; font-weight: 700 !important; }
 .section-card-header span { color: #475569 !important; font-size: 0.84rem !important; font-weight: 500 !important; display: block; }
@@ -161,7 +154,6 @@ p, span { color: #334155; }
 
 iframe[title*="streamlit_geolocation"] { transform: scale(1.28); transform-origin: left center; margin: 6px 0 6px 4px; border-radius: 8px; }
 
-/* Birincil Butonlar (Yazılar Kesinlikle Beyaz ve Kalın) */
 .stButton>button[kind="primary"], .stDownloadButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] { background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%) !important; border: none !important; border-radius: 12px !important; min-height: 48px !important; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important; transition: all 0.2s ease !important; }
 .stButton>button[kind="primary"] p, .stDownloadButton>button[kind="primary"] p, .stFormSubmitButton>button[kind="primary"] p,
 .stButton>button[kind="primary"] span, .stDownloadButton>button[kind="primary"] span, .stFormSubmitButton>button[kind="primary"] span { color: #ffffff !important; font-weight: 700 !important; font-size: 1rem !important; }
@@ -276,7 +268,6 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.cell(95, 6, tr_temizle(f"- Tahmini Rota Tasarrufu: {tasarruf_tl} TL"), border=1, ln=True)
     pdf.ln(4)
     
-    # 2. MEKANSAL HARİTA ENTEGRASYONU
     pdf.set_font("Helvetica", "B", 11)
     pdf.cell(0, 8, tr_temizle(" 2. CBS MEKANSAL YOGUNLUK VE RISK HARITASI"), ln=True, fill=True)
     pdf.ln(2)
@@ -874,7 +865,7 @@ with tab3:
                 sup_talepler = []
                 st.error(f"Talepler yüklenirken hata: {e}")
 
-            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum'] == personel['sorumlu_birim']]
+            gosterilecek_talepler = [t for t in sup_talepler if t.get('alt_bolum') == personel['sorumlu_birim']]
             
             if not gosterilecek_talepler:
                 st.info("Biriminize ait aktif talep bulunmamaktadır.")
