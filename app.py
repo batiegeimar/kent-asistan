@@ -6,33 +6,6 @@ import io
 import json
 import base64
 import urllib.parse
-
-def wa_link_olustur(tel, mesaj):
-    """Telefon numarasını uluslararası 905XXXXXXXXX formatına çevirip WhatsApp linki üretir."""
-    if not tel:
-        return "#"
-    temiz_tel = "".join(filter(str.isdigit, str(tel)))
-    if temiz_tel.startswith("0"):
-        temiz_tel = "9" + temiz_tel
-    elif not temiz_tel.startswith("90") and len(temiz_tel) == 10:
-        temiz_tel = "90" + temiz_tel
-        
-    encoded_mesaj = urllib.parse.quote(mesaj)
-    return f"https://wa.me/{temiz_tel}?text={encoded_mesaj}"
-
-def birim_bilgisi_getir(ana_kategori):
-    """Seçilen kategoriye göre Supabase 'birimler' tablosundan sorumlu ekibi çeker."""
-    try:
-        res = supabase.table("birimler").select("*").eq("kategori_adi", ana_kategori).eq("aktif", True).execute()
-        if res.data and len(res.data) > 0:
-            return res.data[0]
-        # Eşleşme bulunamazsa varsayılan olarak 'Diğer / Genel' birimini getir
-        fallback = supabase.table("birimler").select("*").eq("kategori_adi", "Diğer / Genel").execute()
-        if fallback.data:
-            return fallback.data[0]
-    except Exception:
-        pass
-    return {"birim_adi": "Ortak Çözüm Masası", "sorumlu_tel": "905550000000"}
 from datetime import datetime
 import pandas as pd
 from shapely.geometry import Point, shape
@@ -60,6 +33,43 @@ def logo_base64_getir(dosya_yolu="logo.jpg"):
     return ""
 
 logo_b64 = logo_base64_getir()
+
+# --- POSTGRESQL & SUPABASE BAĞLANTISI ---
+try:
+    conn = st.connection("postgresql", type="sql")
+    baglanti_hatasi = None
+except Exception as e:
+    conn = None
+    baglanti_hatasi = str(e)
+
+# --- WHATSAPP VE BİRİM YARDIMCI FONKSİYONLARI ---
+def wa_link_olustur(tel, mesaj):
+    """Telefon numarasını uluslararası 905XXXXXXXXX formatına çevirip WhatsApp linki üretir."""
+    if not tel:
+        return "#"
+    temiz_tel = "".join(filter(str.isdigit, str(tel)))
+    if temiz_tel.startswith("0"):
+        temiz_tel = "9" + temiz_tel
+    elif not temiz_tel.startswith("90") and len(temiz_tel) == 10:
+        temiz_tel = "90" + temiz_tel
+        
+    encoded_mesaj = urllib.parse.quote(mesaj)
+    return f"https://wa.me/{temiz_tel}?text={encoded_mesaj}"
+
+def birim_bilgisi_getir(ana_kategori):
+    """Seçilen kategoriye göre Supabase 'birimler' tablosundan sorumlu ekibi çeker."""
+    if conn is None:
+        return {"birim_adi": "Ortak Çözüm Masası", "sorumlu_tel": "905550000000"}
+    try:
+        res = conn.query("SELECT * FROM birimler WHERE kategori_adi = :kat AND aktif = TRUE;", params={"kat": ana_kategori}, ttl=0)
+        if not res.empty:
+            return res.iloc[0].to_dict()
+        fallback = conn.query("SELECT * FROM birimler WHERE kategori_adi = 'Diğer / Genel';", ttl=0)
+        if not fallback.empty:
+            return fallback.iloc[0].to_dict()
+    except Exception:
+        pass
+    return {"birim_adi": "Ortak Çözüm Masası", "sorumlu_tel": "905550000000"}
 
 # --- KURUMSAL GOVTECH TASARIM & MOBİL PWA CSS ENJEKSİYONU ---
 st.markdown("""<style>
@@ -130,14 +140,6 @@ div[data-testid="metric-container"] { background-color: #ffffff; border: 1px sol
 .stTabs [data-baseweb="tab"] { font-size: 0.78rem; padding: 0 8px; }
 }
 </style>""", unsafe_allow_html=True)
-
-# --- POSTGRESQL VERİTABANI BAĞLANTISI ---
-try:
-    conn = st.connection("postgresql", type="sql")
-    baglanti_hatasi = None
-except Exception as e:
-    conn = None
-    baglanti_hatasi = str(e)
 
 # =========================================================================
 # 📸 SAHA PERSONELİ İÇİN ŞİFRESİZ HIZLI HASAR GÖRSELİ EKRANI (?gorsel=ID)
@@ -447,8 +449,9 @@ with tab1:
     )
     
     fotograf = st.file_uploader("📷 Hasarlı Bölgenin Canlı Fotoğrafı (Zorunludur - Galeriden Seçilemez)", type=["jpg", "jpeg", "png"], key="vat_foto")
-if fotograf is None:
-    st.warning("⚠️ Lütfen kameranızı kullanarak hasarlı bölgenin anlık fotoğrafını çekip yükleyiniz.")
+    if fotograf is None:
+        st.warning("⚠️ Lütfen kameranızı kullanarak hasarlı bölgenin anlık fotoğrafını çekip yükleyiniz.")
+        
     aciklama = st.text_area("Talep / Şikayet Açıklaması *", placeholder="Mahalle, sokak bilgisi ve sorunu kısaca açıklayınız...", key="vat_aciklama")
     
     gonder_btn = st.button("🚀 Talebi Sisteme Gönder", key="vat_gonder_btn", type="primary", use_container_width=True)
@@ -456,6 +459,8 @@ if fotograf is None:
     if gonder_btn:
         if not ad_soyad or not telefon or not aciklama:
             st.error("Lütfen zorunlu alanları (*) doldurunuz.")
+        elif fotograf is None:
+            st.error("❌ Hasar tespiti için canlı fotoğraf çekilmesi zorunludur! Lütfen kamerayı kullanarak bölgenin fotoğrafını çekin.")
         elif secilen_ilce != "Yenipazar":
             st.error("Seçilen ilçe için sistem aktif değildir.")
         elif "İzin vermiyorum" in konum_izni:
@@ -481,12 +486,8 @@ if fotograf is None:
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
                 simdiki_zaman = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                foto_adi = "Fotoğraf Yok"
-                foto_b64 = ""
-                if fotograf is not None:
-                    foto_adi = fotograf.name
-                    bytes_data = fotograf.getvalue()
-                    foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
+                foto_adi = fotograf.name if fotograf is not None else "Fotoğraf Yok"
+                foto_b64 = base64.b64encode(fotograf.getvalue()).decode("utf-8") if fotograf is not None else ""
                 
                 if conn is not None:
                     try:
@@ -537,7 +538,47 @@ if fotograf is None:
                             )
                             s.commit()
                             
-                        st.success(f"Talebiniz başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}** | Takip Numaranız: **{talep_id}**")
+                        # --- WHATSAPP BİLDİRİM VE YÖNLENDİRME ---
+                        birim_info = birim_bilgisi_getir(secilen_ana_kategori)
+                        birim_adi = birim_info.get("birim_adi", alt_bolum)
+                        saha_tel = birim_info.get("sorumlu_tel", "905550000000")
+                        
+                        vatandas_mesaj = (
+                            f"🏛️ *Yenipazar Belediyesi - Ortak Çözüm Masası*\n\n"
+                            f"Sayın *{ad_soyad}*,\n"
+                            f"*{secilen_ana_kategori} ({secilen_alt_kategori})* konulu bildiriminiz başarıyla kayıt altına alınmıştır.\n\n"
+                            f"📌 *Takip Numaranız:* #{talep_id}\n"
+                            f"🔍 Talebinizin çözüm sürecini KentAsistan portalından takip edebilirsiniz."
+                        )
+                        
+                        saha_mesaj = (
+                            f"🚨 *YENİ SAHA GÖREV ATAMASI (#{talep_id})*\n\n"
+                            f"📂 *Birim:* {birim_adi}\n"
+                            f"📌 *Kategori:* {secilen_ana_kategori} / {secilen_alt_kategori}\n"
+                            f"📝 *Açıklama:* {aciklama}\n"
+                            f"👤 *Vatandaş:* {ad_soyad} ({telefon})\n\n"
+                            f"📍 *Konum & Yol Tarifi:*\nhttps://www.google.com/maps?q={enlem},{boylam}\n\n"
+                            f"📸 *Saha Görev ve Görsel Kartı:*\n{APP_BASE_URL}/?gorsel={talep_id}"
+                        )
+                        
+                        v_link = wa_link_olustur(telefon, vatandas_mesaj)
+                        s_link = wa_link_olustur(saha_tel, saha_mesaj)
+                        
+                        st.success(f"🎉 Talebiniz **#{talep_id}** takip numarası ile başarıyla kaydedildi! Sorumlu Kurum: **{sorumlu_kurum}**")
+                        
+                        st.markdown("""
+                        <div style="background:#f0fdf4; border:1px solid #86efac; padding:12px 16px; border-radius:12px; margin:10px 0;">
+                            <strong style="color:#166534;">📲 Hızlı WhatsApp Bildirim ve Yönlendirme</strong><br>
+                            <span style="color:#15803d; font-size:0.85rem;">Aşağıdaki butonları kullanarak tek tıkla vatandaşa teyit mesajı ve ilgili birime saha iş emri gönderebilirsiniz.</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        col_wa1, col_wa2 = st.columns(2)
+                        with col_wa1:
+                            st.link_button("📱 Vatandaşa Teyit Gönder", v_link, type="primary", use_container_width=True)
+                        with col_wa2:
+                            st.link_button(f"🚨 {birim_adi}'ne İş Emri Gönder", s_link, type="primary", use_container_width=True)
+                            
                         st.balloons()
                     except Exception as e:
                         st.error(f"Veritabanı kayıt hatası: {e}")
