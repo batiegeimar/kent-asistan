@@ -887,17 +887,25 @@ with tab3:
                         atanan_kisi_adi = talep.get('atanan_personel')
                         if atanan_kisi_adi and atanan_kisi_adi != "Atanmadı":
                             try:
+                                # Doğrudan personeller tablosundan atanan kişinin gerçek telefonunu çekiyoruz
                                 df_p_tel = conn.query("SELECT telefon_no FROM personeller WHERE ad_soyad = :p_ad;", params={"p_ad": atanan_kisi_adi}, ttl=0)
                                 hedef_tel = df_p_tel.iloc[0]['telefon_no'].strip() if not df_p_tel.empty else ""
                                 
                                 gorsel_linki = f"{APP_BASE_URL}/?gorsel={talep['talep_id']}"
-                                gorsel_satiri = f"\nHasar Fotografi (Sifresiz Goruntule): {gorsel_linki}" if talep.get('fotograf_b64') else ""
                                 
-                                wa_mesaj = f"🔔 *Yeni Saha Gorevi ({talep['talep_id']})*\n*Kategori:* {talep['alt_kategori']}\n*Aciklama:* {talep['aciklama']}\n*Konum:* https://www.google.com/maps/search/?api=1&query={lat},{lon}{gorsel_satiri}"
-                                wa_url = f"https://wa.me/{hedef_tel}?text={urllib.parse.quote(wa_mesaj)}"
-                                st.link_button("📲 WhatsApp ile Saha Personeline Gönder", wa_url, use_container_width=True)
-                            except:
-                                pass
+                                wa_saha_mesaj = (
+                                    f"🚨 *YENİ SAHA GÖREV ATAMASI (#{talep['talep_id']})*\n\n"
+                                    f"📂 *Kategori:* {talep['alt_kategori']}\n"
+                                    f"📝 *Açıklama:* {talep['aciklama']}\n"
+                                    f"👤 *Vatandaş:* {talep['ad_soyad']} ({talep['telefon_no']})\n\n"
+                                    f"📍 *Konum / Yol Tarifi:*\nhttps://www.google.com/maps?q={talep.get('enlem')},{talep.get('boylam')}\n\n"
+                                    f"📸 *Saha Görev ve Görsel Kartı:*\n{gorsel_linki}"
+                                )
+                                
+                                wa_saha_url = wa_link_olustur(hedef_tel, wa_saha_mesaj)
+                                st.link_button(f"📲 {atanan_kisi_adi}'ne WhatsApp İş Emri Gönder", wa_saha_url, type="primary", use_container_width=True)
+                            except Exception as e:
+                                st.write(f"Personel telefon bilgisi alınamadı: {e}")
 
                         if talep.get('durum') == "Çözüldü - Kapatıldı":
                             vatandas_tel = talep.get('telefon_no', '').strip()
