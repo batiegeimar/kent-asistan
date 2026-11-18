@@ -10,11 +10,23 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
-from fpdf import FPDF
 import os
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')
+
+# Güvenli Matplotlib (CBS Harita) İçe Aktarımı
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib
+    matplotlib.use('Agg')
+    MATPLOTLIB_AKTIF = True
+except ImportError:
+    MATPLOTLIB_AKTIF = False
+
+# Güvenli FPDF (PDF Rapor) İçe Aktarımı
+try:
+    from fpdf import FPDF
+    FPDF_AKTIF = True
+except ImportError:
+    FPDF_AKTIF = False
 
 # Uygulama Canlı URL'si (WhatsApp görsel linki üretimi için)
 APP_BASE_URL = "https://kent-asistan-bpcusdhobee6vqmjbrcsxe.streamlit.app"
@@ -84,6 +96,8 @@ def birim_bilgisi_getir(ana_kategori):
 # --- CBS / HARİTA GÖRSELİ ÜRETME MOTORU ---
 def cbs_harita_gorseli_uret(df_talepler, poligon):
     """Yenipazar ilçe sınırını ve talep noktalarını matplotlib ile çizip dosya yolu döndürür."""
+    if not MATPLOTLIB_AKTIF:
+        return None
     try:
         plt.figure(figsize=(6, 4.5), dpi=150)
         ax = plt.subplot(111)
@@ -233,6 +247,8 @@ def tr_temizle(metin):
     return temizlenmis
 
 def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok_birim, basari_orani, tasarruf_tl, ort_sla_saat, raporlayan_kisi, raporlayan_birim, poligon):
+    if not FPDF_AKTIF:
+        return b""
     pdf = FPDF()
     pdf.add_page()
     
@@ -1077,30 +1093,33 @@ with tab3:
                     st.markdown(ai_ozet_metni)
                     
                     st.markdown("### 📄 Kurumsal Denetim, CBS Harita ve Kaynak Raporu")
-                    pdf_bytes = yonetici_pdf_olustur(
-                        df_rapor=df_rapor,
-                        toplam=toplam_talep,
-                        cozulen=cozulen_talep,
-                        bekleyen=bekleyen_talep,
-                        reddedilen=reddedilen_talep,
-                        en_cok_birim=en_cok_birim,
-                        basari_orani=basari_orani,
-                        tasarruf_tl=tahmini_tasarruf_tl,
-                        ort_sla_saat=ort_sla_saat,
-                        raporlayan_kisi=personel['ad_soyad'],
-                        raporlayan_birim=personel['sorumlu_birim'],
-                        poligon=yenipazar_poligonu
-                    )
-                    
-                    st.download_button(
-                        label="📥 Resmi CBS Haritalı Yönetici Raporunu PDF Olarak İndir",
-                        data=pdf_bytes,
-                        file_name=f"KentAsistan_CBS_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
-                        mime="application/pdf",
-                        type="primary",
-                        key="yonetici_pdf_indir_btn",
-                        use_container_width=True
-                    )
+                    if FPDF_AKTIF:
+                        pdf_bytes = yonetici_pdf_olustur(
+                            df_rapor=df_rapor,
+                            toplam=toplam_talep,
+                            cozulen=cozulen_talep,
+                            bekleyen=bekleyen_talep,
+                            reddedilen=reddedilen_talep,
+                            en_cok_birim=en_cok_birim,
+                            basari_orani=basari_orani,
+                            tasarruf_tl=tahmini_tasarruf_tl,
+                            ort_sla_saat=ort_sla_saat,
+                            raporlayan_kisi=personel['ad_soyad'],
+                            raporlayan_birim=personel['sorumlu_birim'],
+                            poligon=yenipazar_poligonu
+                        )
+                        
+                        st.download_button(
+                            label="📥 Resmi CBS Haritalı Yönetici Raporunu PDF Olarak İndir",
+                            data=pdf_bytes,
+                            file_name=f"KentAsistan_CBS_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
+                            mime="application/pdf",
+                            type="primary",
+                            key="yonetici_pdf_indir_btn",
+                            use_container_width=True
+                        )
+                    else:
+                        st.warning("⚠️ FPDF kütüphanesi yüklü olmadığı için PDF rapor indirme özelliği geçici olarak devre dışıdır (requirements.txt dosyası eklendiğinde aktif olacaktır).")
                     
                     st.markdown("---")
                     
