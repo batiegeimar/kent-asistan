@@ -6,6 +6,3 @@ shapely
 Pillow
 fpdf2
 matplotlib
-contextily
-geopandas
-contextily
