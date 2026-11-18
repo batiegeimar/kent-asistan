@@ -11,6 +11,8 @@ import pandas as pd
 from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
 import os
+import geopandas as gpd
+import contextily as ctx
 
 # Güvenli Matplotlib (CBS Harita) İçe Aktarımı
 try:
@@ -106,33 +108,42 @@ def birim_bilgisi_getir(ana_kategori):
         pass
     return {"birim_adi": "Fen İşleri Müdürlüğü", "sorumlu_tel": "905550000000"}
 
-# --- CBS / HARİTA GÖRSELİ ÜRETME MOTORU ---
+# --- CBS / OSM SOKAK ALTLIKLI HARİTA GÖRSELİ ÜRETME MOTORU ---
 def cbs_harita_gorseli_uret(df_talepler, poligon):
-    """Yenipazar ilçe sınırını ve talep noktalarını matplotlib ile çizip dosya yolu döndürür."""
+    """Yenipazar ilçe sınırını, talep noktalarını ve OpenStreetMap sokak altlığını çizer."""
     if not MATPLOTLIB_AKTIF:
         return None
     try:
-        plt.figure(figsize=(6, 4.5), dpi=150)
-        ax = plt.subplot(111)
+        fig, ax = plt.subplots(figsize=(6, 4.5), dpi=150)
         
-        if poligon is not None:
-            x, y = poligon.exterior.xy
-            ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı")
-            ax.fill(x, y, color="#f0f9ff", alpha=0.4)
-            
+        # Talep noktalarını Web Mercator formatına çevirip ekle
         if not df_talepler.empty and 'enlem' in df_talepler.columns and 'boylam' in df_talepler.columns:
             gecerli_df = df_talepler.dropna(subset=['enlem', 'boylam'])
             if not gecerli_df.empty:
-                ax.scatter(gecerli_df['boylam'], gecerli_df['enlem'], color="#dc2626", s=35, zorder=5, label="Arıza/Talep Noktaları")
+                gdf = gpd.GeoDataFrame(
+                    gecerli_df, 
+                    geometry=gpd.points_from_xy(gecerli_df['boylam'], gecerli_df['enlem']),
+                    crs="EPSG:4326"
+                ).to_crs(epsg=3857)
+                gdf.plot(ax=ax, color="#dc2626", markersize=45, zorder=5, label="Arıza/Talep Noktaları", marker="o", alpha=0.85)
+
+        # İlçe sınırını ekle
+        if poligon is not None:
+            poly_gdf = gpd.GeoDataFrame(index=[0], geometry=[poligon], crs="EPSG:4326").to_crs(epsg=3857)
+            poly_gdf.boundary.plot(ax=ax, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı", zorder=4)
+
+        # OpenStreetMap Sokak ve Yerleşim Altlığını Arka Plana Oturt
+        try:
+            ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik, zoom=13, alpha=0.75)
+        except Exception:
+            pass
                 
-        plt.title("KentAsistan - Coğrafi Risk ve Yoğunluk Haritası (Hotspot)", fontsize=10, fontweight="bold", color="#0f172a")
-        plt.xlabel("Boylam", fontsize=8)
-        plt.ylabel("Enlem", fontsize=8)
+        plt.title("KentAsistan - OSM Sokak Tabanlı Risk ve Yoğunluk Haritası", fontsize=9, fontweight="bold", color="#0f172a")
+        ax.set_axis_off()
         plt.legend(loc="upper right", fontsize=7)
-        plt.grid(True, linestyle="--", alpha=0.5)
         
         harita_yolu = "temp_cbs_harita.png"
-        plt.savefig(harita_yolu, bbox_inches="tight")
+        plt.savefig(harita_yolu, bbox_inches="tight", pad_inches=0.1)
         plt.close()
         return harita_yolu
     except Exception:
@@ -298,7 +309,7 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.ln(4)
     
     pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 8, tr_temizle(" 2. CBS MEKANSAL YOGUNLUK VE RISK HARITASI"), ln=True, fill=True)
+    pdf.cell(0, 8, tr_temizle(" 2. OSM SOKAK ALTLIKLI CBS MEKANSAL YOGUNLUK HARITASI"), ln=True, fill=True)
     pdf.ln(2)
     
     harita_dosyasi = cbs_harita_gorseli_uret(df_rapor, poligon)
@@ -743,7 +754,7 @@ with tab3:
                     for kurum in kurumlar_listesi:
                         kurum_adi = kurum["kurum_adi"]
                         birim_adi = kurum["alt_bolum"]
-                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim") == birim_adi]
+                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim"] == birim_adi]
                         
                         with st.expander(f"{kurum_adi} ➔ {birim_adi}"):
                             if ilgili_yetkililer:
@@ -906,7 +917,6 @@ with tab3:
                         if alt_ad and alt_tel and alt_sifre:
                             temiz_alt_tel = telefon_temizle(alt_tel)
                             try:
-                                # Aynı telefon numarası kontrolü
                                 kontrol_df = conn.query("SELECT * FROM personeller WHERE telefon_no = :tel;", params={"tel": temiz_alt_tel}, ttl=0)
                                 if not kontrol_df.empty:
                                     st.error("❌ Bu telefon numarası sistemde zaten kayıtlı! Lütfen farklı bir numara giriniz.")
@@ -959,7 +969,6 @@ with tab3:
                             maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                             st.link_button("🗺️ Konumu Haritada Gör", maps_url, use_container_width=True)
                         
-                        # SAHA PERSONELİNE WHATSAPP İŞ EMRİ GÖNDERME
                         atanan_kisi_adi = talep.get('atanan_personel')
                         if atanan_kisi_adi and atanan_kisi_adi != "Atanmadı":
                             try:
@@ -985,7 +994,6 @@ with tab3:
                             except Exception as e:
                                 st.write(f"Personel telefon bilgisi alınamadı: {e}")
 
-                        # VATANDAŞA GERİ DÖNÜŞ / ÇÖZÜM BİLDİRİMİ (GRİ EKRAN SORUNU ÇÖZÜLDÜ)
                         st.markdown("---")
                         vatandas_tel = talep.get('telefon_no', '').strip()
                         if talep.get('durum') == "Çözüldü - Kapatıldı":
@@ -1105,7 +1113,7 @@ with tab3:
 
             # 📊 İNSAN VE EKONOMİK KAYNAK YÖNETİMİ ANALİZ MERKEZİ
             st.markdown("---")
-            st.header("📊 İnsan ve Ekonomik Kaynak Yönetimi Analiz Merkezi")
+            st.header("📊 İnsan dan Ekonomik Kaynak Yönetimi Analiz Merkezi")
             st.info("Saha personeli iş yüklerini, ortalama çözüm sürelerini (SLA) ve gereksiz keşif turlarının önlenmesiyle sağlanan ekonomik tasarrufu hesaplar.")
             
             try:
@@ -1175,7 +1183,7 @@ with tab3:
                     """
                     st.markdown(ai_ozet_metni)
                     
-                    st.markdown("### 📄 Kurumsal Denetim, CBS Harita ve Kaynak Raporu")
+                    st.markdown("### 📄 Kurumsal Denetim, OSM Sokak Haritası ve Kaynak Raporu")
                     if FPDF_AKTIF:
                         pdf_bytes = yonetici_pdf_olustur(
                             df_rapor=df_rapor,
@@ -1193,9 +1201,9 @@ with tab3:
                         )
                         
                         st.download_button(
-                            label="📥 Resmi CBS Haritalı Yönetici Raporunu PDF Olarak İndir",
+                            label="📥 Resmi OSM Haritalı Yönetici Raporunu PDF Olarak İndir",
                             data=pdf_bytes,
-                            file_name=f"KentAsistan_CBS_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
+                            file_name=f"KentAsistan_OSM_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
                             mime="application/pdf",
                             type="primary",
                             key="yonetici_pdf_indir_btn",
