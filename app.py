@@ -11,8 +11,6 @@ import pandas as pd
 from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
 import os
-import geopandas as gpd
-import contextily as ctx
 
 # Güvenli Matplotlib (CBS Harita) İçe Aktarımı
 try:
@@ -108,39 +106,41 @@ def birim_bilgisi_getir(ana_kategori):
         pass
     return {"birim_adi": "Fen İşleri Müdürlüğü", "sorumlu_tel": "905550000000"}
 
-# --- CBS / OSM SOKAK ALTLIKLI HARİTA GÖRSELİ ÜRETME MOTORU ---
+# --- CBS / COĞRAFİ HARİTA GÖRSELİ ÜRETME MOTORU ---
 def cbs_harita_gorseli_uret(df_talepler, poligon):
-    """Yenipazar ilçe sınırını, talep noktalarını ve OpenStreetMap sokak altlığını çizer."""
+    """Yenipazar ilçe sınırını ve talep noktalarını matplotlib ile çizer."""
     if not MATPLOTLIB_AKTIF:
         return None
     try:
-        fig, ax = plt.subplots(figsize=(6, 4.5), dpi=150)
+        plt.figure(figsize=(6, 4.5), dpi=150)
+        ax = plt.subplot(111)
         
+        # İlçe sınırını çiz
+        if poligon is not None:
+            if hasattr(poligon, 'exterior'):
+                x, y = poligon.exterior.xy
+                ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı")
+                ax.fill(x, y, color="#f0f9ff", alpha=0.4)
+            elif hasattr(poligon, 'geoms'):
+                for geom in poligon.geoms:
+                    x, y = geom.exterior.xy
+                    ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı")
+                    ax.fill(x, y, color="#f0f9ff", alpha=0.4)
+            
+        # Talep noktalarını haritaya ekle
         if not df_talepler.empty and 'enlem' in df_talepler.columns and 'boylam' in df_talepler.columns:
             gecerli_df = df_talepler.dropna(subset=['enlem', 'boylam'])
             if not gecerli_df.empty:
-                gdf = gpd.GeoDataFrame(
-                    gecerli_df, 
-                    geometry=gpd.points_from_xy(gecerli_df['boylam'], gecerli_df['enlem']),
-                    crs="EPSG:4326"
-                ).to_crs(epsg=3857)
-                gdf.plot(ax=ax, color="#dc2626", markersize=45, zorder=5, label="Arıza/Talep Noktaları", marker="o", alpha=0.85)
-
-        if poligon is not None:
-            poly_gdf = gpd.GeoDataFrame(index=[0], geometry=[poligon], crs="EPSG:4326").to_crs(epsg=3857)
-            poly_gdf.boundary.plot(ax=ax, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı", zorder=4)
-
-        try:
-            ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik, zoom=13, alpha=0.75)
-        except Exception:
-            pass
+                ax.scatter(gecerli_df['boylam'], gecerli_df['enlem'], color="#dc2626", s=45, zorder=5, label="Arıza/Talep Noktaları", edgecolors="#ffffff", linewidths=1)
                 
-        plt.title("KentAsistan - OSM Sokak Tabanlı Risk ve Yoğunluk Haritası", fontsize=9, fontweight="bold", color="#0f172a")
-        ax.set_axis_off()
+        plt.title("KentAsistan - Mekansal Risk ve Yoğunluk Haritası", fontsize=10, fontweight="bold", color="#0f172a")
+        plt.xlabel("Boylam", fontsize=8)
+        plt.ylabel("Enlem", fontsize=8)
         plt.legend(loc="upper right", fontsize=7)
+        plt.grid(True, linestyle="--", alpha=0.5)
         
         harita_yolu = "temp_cbs_harita.png"
-        plt.savefig(harita_yolu, bbox_inches="tight", pad_inches=0.1)
+        plt.savefig(harita_yolu, bbox_inches="tight")
         plt.close()
         return harita_yolu
     except Exception:
@@ -306,7 +306,7 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.ln(4)
     
     pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 8, tr_temizle(" 2. OSM SOKAK ALTLIKLI CBS MEKANSAL YOGUNLUK HARITASI"), ln=True, fill=True)
+    pdf.cell(0, 8, tr_temizle(" 2. CBS MEKANSAL YOGUNLUK VE RISK HARITASI"), ln=True, fill=True)
     pdf.ln(2)
     
     harita_dosyasi = cbs_harita_gorseli_uret(df_rapor, poligon)
@@ -1179,7 +1179,7 @@ with tab3:
                     """
                     st.markdown(ai_ozet_metni)
                     
-                    st.markdown("### 📄 Kurumsal Denetim, OSM Sokak Haritası ve Kaynak Raporu")
+                    st.markdown("### 📄 Kurumsal Denetim, CBS Harita ve Kaynak Raporu")
                     if FPDF_AKTIF:
                         pdf_bytes = yonetici_pdf_olustur(
                             df_rapor=df_rapor,
@@ -1197,9 +1197,9 @@ with tab3:
                         )
                         
                         st.download_button(
-                            label="📥 Resmi OSM Haritalı Yönetici Raporunu PDF Olarak İndir",
+                            label="📥 Resmi CBS Haritalı Yönetici Raporunu PDF Olarak İndir",
                             data=pdf_bytes,
-                            file_name=f"KentAsistan_OSM_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
+                            file_name=f"KentAsistan_CBS_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
                             mime="application/pdf",
                             type="primary",
                             key="yonetici_pdf_indir_btn",
