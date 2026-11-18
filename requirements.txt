@@ -5,3 +5,4 @@ streamlit-geolocation
 shapely
 Pillow
 fpdf2
+matplotlib
