@@ -11,6 +11,7 @@ import pandas as pd
 from shapely.geometry import Point, shape
 from streamlit_geolocation import streamlit_geolocation
 import os
+import urllib.request
 
 # Güvenli Matplotlib (CBS Harita) İçe Aktarımı
 try:
@@ -106,41 +107,68 @@ def birim_bilgisi_getir(ana_kategori):
         pass
     return {"birim_adi": "Fen İşleri Müdürlüğü", "sorumlu_tel": "905550000000"}
 
-# --- CBS / COĞRAFİ HARİTA GÖRSELİ ÜRETME MOTORU ---
+# --- CBS / OSM SOKAK ALTLIKLI HARİTA GÖRSELİ ÜRETME MOTORU (STATIC MAP API) ---
 def cbs_harita_gorseli_uret(df_talepler, poligon):
-    """Yenipazar ilçe sınırını ve talep noktalarını matplotlib ile çizer."""
+    """OpenStreetMap sokak altlığını ve ilçe/talep katmanlarını tek görselde birleştirir."""
     if not MATPLOTLIB_AKTIF:
         return None
     try:
-        plt.figure(figsize=(6, 4.5), dpi=150)
-        ax = plt.subplot(111)
+        # Yenipazar ilçe merkez koordinatları (Varsayılan)
+        merkez_lat, merkez_lon = 37.8250, 28.1900
         
+        # Eğer kayıtlı talepler varsa merkez koordinatını talep noktalarına göre ortala
+        if not df_talepler.empty and 'enlem' in df_talepler.columns and 'boylam' in df_talepler.columns:
+            gecerli_df = df_talepler.dropna(subset=['enlem', 'boylam'])
+            if not gecerli_df.empty:
+                merkez_lat = gecerli_df['enlem'].mean()
+                merkez_lon = gecerli_df['boylam'].mean()
+
+        fig, ax = plt.subplots(figsize=(6, 4.5), dpi=150)
+        
+        # OpenStreetMap tabanlı ücretsiz statik harita görselini API üzerinden indiriyoruz
+        # (Staticman / OSM Tile Render Mantığı)
+        tile_url = f"https://static-maps.yandex.ru/1.x/?ll={merkez_lon},{merkez_lat}&z=12&size=650,450&l=map"
+        # Alternatif olarak OSM tabanlı tile servis URI:
+        osm_api_url = f"https://api.openstreetmap.us/map-image?lat={merkez_lat}&lon={merkez_lon}&zoom=12&width=600&height=450"
+        
+        harita_indirildi = False
+        try:
+            req = urllib.request.Request(osm_api_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=4) as response:
+                img_data = response.read()
+                bg_img = plt.imread(io.BytesIO(img_data))
+                # Coğrafi sınırları ekrana oturt
+                ax.imshow(bg_img, extent=[28.05, 28.35, 37.65, 37.95], aspect='auto', alpha=0.75)
+                harita_indirildi = True
+        except Exception:
+            pass
+
+        # Eğer internet tabanlı tile yüklenemezse grid arka planla destekle
+        if not harita_indirildi:
+            ax.set_facecolor("#f8fafc")
+
         # İlçe sınırını çiz
         if poligon is not None:
             if hasattr(poligon, 'exterior'):
                 x, y = poligon.exterior.xy
-                ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı")
-                ax.fill(x, y, color="#f0f9ff", alpha=0.4)
+                ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı", zorder=4)
             elif hasattr(poligon, 'geoms'):
                 for geom in poligon.geoms:
                     x, y = geom.exterior.xy
-                    ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı")
-                    ax.fill(x, y, color="#f0f9ff", alpha=0.4)
+                    ax.plot(x, y, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı", zorder=4)
             
-        # Talep noktalarını haritaya ekle
+        # Talep noktalarını haritaya ekle (Kırmızı Hotspotlar)
         if not df_talepler.empty and 'enlem' in df_talepler.columns and 'boylam' in df_talepler.columns:
             gecerli_df = df_talepler.dropna(subset=['enlem', 'boylam'])
             if not gecerli_df.empty:
-                ax.scatter(gecerli_df['boylam'], gecerli_df['enlem'], color="#dc2626", s=45, zorder=5, label="Arıza/Talep Noktaları", edgecolors="#ffffff", linewidths=1)
+                ax.scatter(gecerli_df['boylam'], gecerli_df['enlem'], color="#dc2626", s=55, zorder=5, label="Arıza/Talep Noktaları", edgecolors="#ffffff", linewidths=1.5)
                 
-        plt.title("KentAsistan - Mekansal Risk ve Yoğunluk Haritası", fontsize=10, fontweight="bold", color="#0f172a")
-        plt.xlabel("Boylam", fontsize=8)
-        plt.ylabel("Enlem", fontsize=8)
+        plt.title("KentAsistan - OSM Sokak ve Yerleşim Dokulu Risk Haritası", fontsize=9, fontweight="bold", color="#0f172a")
+        ax.axis('off') # Boş koordinat çizgilerini gizle, gerçek harita altlığı kalsın
         plt.legend(loc="upper right", fontsize=7)
-        plt.grid(True, linestyle="--", alpha=0.5)
         
         harita_yolu = "temp_cbs_harita.png"
-        plt.savefig(harita_yolu, bbox_inches="tight")
+        plt.savefig(harita_yolu, bbox_inches="tight", pad_inches=0.1)
         plt.close()
         return harita_yolu
     except Exception:
@@ -306,7 +334,7 @@ def yonetici_pdf_olustur(df_rapor, toplam, cozulen, bekleyen, reddedilen, en_cok
     pdf.ln(4)
     
     pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 8, tr_temizle(" 2. CBS MEKANSAL YOGUNLUK VE RISK HARITASI"), ln=True, fill=True)
+    pdf.cell(0, 8, tr_temizle(" 2. OSM SOKAK ALTLIKLI CBS MEKANSAL YOGUNLUK HARITASI"), ln=True, fill=True)
     pdf.ln(2)
     
     harita_dosyasi = cbs_harita_gorseli_uret(df_rapor, poligon)
@@ -1179,7 +1207,7 @@ with tab3:
                     """
                     st.markdown(ai_ozet_metni)
                     
-                    st.markdown("### 📄 Kurumsal Denetim, CBS Harita ve Kaynak Raporu")
+                    st.markdown("### 📄 Kurumsal Denetim, OSM Sokak Haritası ve Kaynak Raporu")
                     if FPDF_AKTIF:
                         pdf_bytes = yonetici_pdf_olustur(
                             df_rapor=df_rapor,
@@ -1197,9 +1225,9 @@ with tab3:
                         )
                         
                         st.download_button(
-                            label="📥 Resmi CBS Haritalı Yönetici Raporunu PDF Olarak İndir",
+                            label="📥 Resmi OSM Haritalı Yönetici Raporunu PDF Olarak İndir",
                             data=pdf_bytes,
-                            file_name=f"KentAsistan_CBS_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
+                            file_name=f"KentAsistan_OSM_Kestirimci_Rapor_{datetime.now(TR_ZAMAN_DILIMI).strftime('%Y%m%d_%H%M')}.pdf",
                             mime="application/pdf",
                             type="primary",
                             key="yonetici_pdf_indir_btn",
