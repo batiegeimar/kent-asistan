@@ -38,6 +38,17 @@ def simdiki_tr_zaman():
     """Gerçek Türkiye saatini (UTC+3) string formatında döndürür."""
     return datetime.now(TR_ZAMAN_DILIMI).strftime("%Y-%m-%d %H:%M:%S")
 
+def telefon_temizle(tel):
+    """Telefon numarasını standart 05XXXXXXXXX formatına getirir (Veritabanı girişleri için)."""
+    if not tel:
+        return ""
+    rakamlar = "".join(filter(str.isdigit, str(tel)))
+    if rakamlar.startswith("90") and len(rakamlar) == 12:
+        return "0" + rakamlar[2:]
+    elif len(rakamlar) == 10 and not rakamlar.startswith("0"):
+        return "0" + rakamlar
+    return rakamlar
+
 # Sayfa Yapılandırması ve Kurumsal Logo İkonu Entegrasyonu
 ikon_yolu = "logo.jpg" if os.path.exists("logo.jpg") else "🏙️"
 
@@ -65,8 +76,8 @@ except Exception as e:
     baglanti_hatasi = str(e)
 
 # --- WHATSAPP VE BİRİM YARDIMCI FONKSİYONLARI ---
-def wa_link_olustur(tel, mesaj):
-    """Telefon numarasını uluslararası 905XXXXXXXXX formatına çevirip WhatsApp linki üretir."""
+def wa_link_olustur(tel, mesaj, web_modu=False):
+    """Telefon numarasını uluslararası 905XXXXXXXXX formatına çevirip WhatsApp veya WhatsApp Web linki üretir."""
     if not tel:
         return "#"
     temiz_tel = "".join(filter(str.isdigit, str(tel)))
@@ -76,7 +87,9 @@ def wa_link_olustur(tel, mesaj):
         temiz_tel = "90" + temiz_tel
         
     encoded_mesaj = urllib.parse.quote(mesaj)
-    return f"https://wa.me/{temiz_tel}?text={encoded_mesaj}"
+    if web_modu:
+        return f"https://web.whatsapp.com/send?phone={temiz_tel}&text={encoded_mesaj}"
+    return f"https://api.whatsapp.com/send?phone={temiz_tel}&text={encoded_mesaj}"
 
 def birim_bilgisi_getir(ana_kategori):
     """Seçilen kategoriye göre Supabase 'birimler' tablosundan ilgili departmanı çeker."""
@@ -526,6 +539,7 @@ with tab1:
 
                 talep_id = f"KENT-{random.randint(10000, 99999)}"
                 simdiki_zaman = simdiki_tr_zaman()
+                temiz_vat_tel = telefon_temizle(telefon)
                 
                 foto_adi = fotograf.name if fotograf is not None else "Fotoğraf Yok"
                 foto_b64 = base64.b64encode(fotograf.getvalue()).decode("utf-8") if fotograf is not None else ""
@@ -554,7 +568,7 @@ with tab1:
                                     "talep_id": talep_id,
                                     "tc_kimlik_no": tc_kimlik if tc_kimlik else "Belirtilmemiş",
                                     "ad_soyad": ad_soyad,
-                                    "telefon_no": telefon.strip(),
+                                    "telefon_no": temiz_vat_tel,
                                     "il": secilen_il,
                                     "ilce": secilen_ilce,
                                     "ana_kategori": secilen_ana_kategori,
@@ -587,10 +601,15 @@ with tab1:
                             f"🔍 Talebinizin çözüm sürecini KentAsistan portalından takip edebilirsiniz."
                         )
                         
-                        v_link = wa_link_olustur(telefon, vatandas_mesaj)
+                        v_link_app = wa_link_olustur(temiz_vat_tel, vatandas_mesaj, web_modu=False)
+                        v_link_web = wa_link_olustur(temiz_vat_tel, vatandas_mesaj, web_modu=True)
                         
                         st.success(f"🎉 Talebiniz **#{talep_id}** takip numarası ile başarıyla kaydedildi! İnceleme için kuruma iletildi.")
-                        st.link_button("📱 Vatandaşa Teyit Gönder", v_link, type="primary", use_container_width=True)
+                        col_w_btn1, col_w_btn2 = st.columns(2)
+                        with col_w_btn1:
+                            st.link_button("📱 WhatsApp Uygulaması ile Gönder", v_link_app, type="primary", use_container_width=True)
+                        with col_w_btn2:
+                            st.link_button("💻 WhatsApp Web (Tarayıcı) ile Gönder", v_link_web, use_container_width=True)
                         st.balloons()
                     except Exception as e:
                         st.error(f"Veritabanı kayıt hatası: {e}")
@@ -617,7 +636,7 @@ with tab2:
     if st.button("🔍 Talebi Güvenli Sorgula", key="guvenli_sorgula_btn", type="primary", use_container_width=True):
         if sorgu_id and sorgu_tel:
             try:
-                clean_sorgu_tel = sorgu_tel.strip().replace(" ", "")
+                clean_sorgu_tel = telefon_temizle(sorgu_tel)
                 q_guvenli = "SELECT * FROM talepler WHERE talep_id = :tid AND telefon_no = :tel;"
                 df_sorgu = conn.query(q_guvenli, params={"tid": sorgu_id.strip(), "tel": clean_sorgu_tel}, ttl=0)
                 
@@ -678,9 +697,9 @@ with tab3:
         if st.button("🔐 Güvenli Giriş Yap", key="personel_giris_btn", type="primary", use_container_width=True):
             if tel_giris and sifre_giris:
                 try:
-                    clean_tel = tel_giris.strip().replace(" ", "")
+                    clean_tel = telefon_temizle(tel_giris)
                     q_login = "SELECT * FROM personeller WHERE telefon_no = :tel AND sifre = :sifre;"
-                    df_pers = conn.query(q_login, params={"tel": clean_tel, "sifre": sifre_giris}, ttl=0)
+                    df_pers = conn.query(q_login, params={"tel": clean_tel, "sifre": sifre_giris.strip()}, ttl=0)
                     
                     if not df_pers.empty:
                         eslesen_personel = df_pers.iloc[0].to_dict()
@@ -707,7 +726,7 @@ with tab3:
 
         unvan_degeri = str(personel.get("unvan", "")).strip().lower()
         is_super_admin = unvan_degeri in ["süper_admin", "süper admin", "super_admin", "super admin"]
-        is_saha_personeli = unvan_degeri in ["saha personeli", "usta", "teknisyen", "operatör", "saha ekip sorumlusu"]
+        is_saha_personeli = unvan_degeri in ["saha personeli", "usta", "teknisyen", "operatör", "saha ekip sorumlusu", "işçi", "isci"]
 
         # 1. SÜPER ADMIN PANELİ
         if is_super_admin:
@@ -728,12 +747,12 @@ with tab3:
                         
                         with st.expander(f"{kurum_adi} ➔ {birim_adi}"):
                             if ilgili_yetkililer:
-                                for y in ilgili_yetkililer:
+                                for y_idx, y in enumerate(ilgili_yetkililer):
                                     col_info, col_del = st.columns([4, 1])
                                     with col_info:
                                         st.write(f"- **{y['ad_soyad']}** | Tel: `{y.get('telefon_no')}` | Unvan: *{y['unvan']}*")
                                     with col_del:
-                                        if st.button("Sil", key=f"del_sup_{y.get('telefon_no')}_{y.get('ad_soyad')}"):
+                                        if st.button("Sil", key=f"del_sup_{birim_adi}_{y.get('telefon_no')}_{y_idx}"):
                                             with conn.session as s:
                                                 s.execute(text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"), {"tel": y.get('telefon_no'), "ad": y.get('ad_soyad')})
                                                 s.commit()
@@ -748,16 +767,19 @@ with tab3:
                 p_ad = st.text_input("Yöneticinin Adı Soyadı", key="p_ad_input")
                 p_tel = st.text_input("Telefon Numarası (Giriş için Örn: 0555...)", key="p_tel_input")
                 p_sifre = st.text_input("Şifre", type="password", key="p_sifre_input")
-                p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Fen İşleri Müdürü", "Su ve Kanalizasyon Amiri", "Park ve Bahçeler Amiri", "Zabıta Amiri"], key="p_unvan_select")
+                p_unvan = st.selectbox("Unvan", ["Kurum Yetkilisi", "Fen İşleri Müdürü", "Su ve Kanalizasyon Amiri", "Park ve Bahçeler Amiri", "Zabıta Amiri", "Birim Sorumlusu"], key="p_unvan_select")
                 p_birim = st.selectbox("Sorumlu Olduğu Kurum / Birim", [k["alt_bolum"] for k in kurumlar_listesi], key="p_birim_select")
                 
                 if st.button("Kaydet", key="yonetici_olustur_btn", type="primary", use_container_width=True):
                     if p_ad and p_tel and p_sifre:
+                        temiz_p_tel = telefon_temizle(p_tel)
                         with conn.session as s:
-                            s.execute(text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), {"ad": p_ad, "tel": p_tel.strip(), "sifre": p_sifre, "unvan": p_unvan, "birim": p_birim})
+                            s.execute(text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), {"ad": p_ad.strip(), "tel": temiz_p_tel, "sifre": p_sifre.strip(), "unvan": p_unvan, "birim": p_birim})
                             s.commit()
-                        st.success("Yönetici eklendi!")
+                        st.success(f"✅ {p_ad} ({p_unvan}) başarıyla eklendi! Giriş Telefonu: {temiz_p_tel}")
                         st.rerun()
+                    else:
+                        st.warning("Lütfen tüm alanları doldurunuz.")
 
         # 2. SAHA PERSONELİ MOBİL OPERASYON PANELİ
         elif is_saha_personeli:
@@ -835,43 +857,78 @@ with tab3:
                         else:
                             st.warning("Lütfen sahadaki çözüme ait kanıt fotoğrafı yükleyiniz.")
 
-        # 3. KURUM YETKİLİSİ / MÜDÜR PANELİ
+        # 3. KURUM YETKİLİSİ / MÜDÜR / BİRİM SORUMLUSU PANELİ
         else:
             st.markdown("---")
             st.subheader(f"🏛️ {personel['sorumlu_birim']} - Operasyon Paneli")
             
-            with st.expander("👥 Birim Saha Personelleri ve İnsan Kaynağı Yönetimi"):
+            # SAHA PERSONELİ / İŞÇİ / USTA EKLEME VE SİLME ALANI (VARSAYILAN AÇIK)
+            with st.expander("👥 Birim Saha Personeli / İşçi / Usta Yönetimi (Ekle & Sil)", expanded=True):
+                st.markdown("#### 📋 Mevcut Saha Ekibiniz")
                 try:
-                    df_birim_pers = conn.query("SELECT * FROM personeller WHERE sorumlu_birim = :birim AND unvan IN ('Saha Personeli', 'Usta', 'Teknisyen', 'Operatör', 'Saha Ekip Sorumlusu');", params={"birim": personel['sorumlu_birim']}, ttl=0)
+                    df_birim_pers = conn.query(
+                        "SELECT * FROM personeller WHERE sorumlu_birim = :birim AND unvan IN ('Saha Personeli', 'Usta', 'Teknisyen', 'Operatör', 'Saha Ekip Sorumlusu', 'İşçi');", 
+                        params={"birim": personel['sorumlu_birim']}, 
+                        ttl=0
+                    )
                     if not df_birim_pers.empty:
-                        for _, bp in df_birim_pers.iterrows():
+                        for b_idx, bp in df_birim_pers.iterrows():
                             c_info, c_del = st.columns([4, 1])
                             with c_info:
-                                st.write(f"- **{bp['ad_soyad']}** | Tel: `{bp.get('telefon_no')}` | Unvan: *{bp['unvan']}*")
+                                st.write(f"- **{bp['ad_soyad']}** | Tel: `{bp.get('telefon_no')}` | Şifre: `{bp.get('sifre')}` | Unvan: *{bp['unvan']}*")
                             with c_del:
-                                if st.button("Sil", key=f"del_birim_{bp.get('telefon_no')}_{bp.get('ad_soyad')}"):
+                                if st.button("🗑️ Sil", key=f"del_birim_{bp.get('telefon_no')}_{b_idx}", use_container_width=True):
                                     with conn.session as s:
-                                        s.execute(text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad"), {"tel": bp.get('telefon_no'), "ad": bp.get('ad_soyad')})
+                                        s.execute(
+                                            text("DELETE FROM personeller WHERE telefon_no = :tel AND ad_soyad = :ad AND sorumlu_birim = :birim"), 
+                                            {"tel": bp.get('telefon_no'), "ad": bp.get('ad_soyad'), "birim": personel['sorumlu_birim']}
+                                        )
                                         s.commit()
-                                    st.success("Silindi!")
+                                    st.success(f"{bp['ad_soyad']} sistemden silindi!")
                                     st.rerun()
+                    else:
+                        st.info("Biriminize kayıtlı henüz saha personeli/usta bulunmamaktadır. Aşağıdan ekleyebilirsiniz.")
                 except Exception as e:
-                    st.error(f"Hata: {e}")
+                    st.error(f"Personel listesi yüklenirken hata: {e}")
 
-                st.markdown("#### Yeni Saha Personeli Tanımla")
-                with st.form("birim_alt_personel_form"):
-                    alt_ad = st.text_input("Personelin Adı Soyadı", key="birim_alt_ad")
-                    alt_tel = st.text_input("Telefon Numarası (Örn: 0555...)", key="birim_alt_tel")
-                    alt_sifre = st.text_input("Şifre", type="password", key="birim_alt_sifre")
-                    alt_unvan = st.selectbox("Unvan", ["Saha Personeli", "Usta", "Teknisyen", "Operatör", "Saha Ekip Sorumlusu"], key="birim_alt_unvan")
+                st.markdown("---")
+                st.markdown("#### ➕ Yeni Saha Personeli / İşçi / Usta Tanımla")
+                with st.form("birim_alt_personel_form", clear_on_submit=True):
+                    col_sp1, col_sp2 = st.columns(2)
+                    with col_sp1:
+                        alt_ad = st.text_input("Personelin Adı Soyadı *", placeholder="Örn: Mehmet Demir")
+                        alt_tel = st.text_input("Giriş Telefon Numarası *", placeholder="Örn: 0555 987 65 43")
+                    with col_sp2:
+                        alt_sifre = st.text_input("Giriş Şifresi *", type="password", placeholder="En az 4 karakter")
+                        alt_unvan = st.selectbox("Görevi / Unvanı", ["Saha Personeli", "Usta", "İşçi", "Teknisyen", "Operatör", "Saha Ekip Sorumlusu"])
                     
-                    if st.form_submit_button("Birimime Saha Personeli Kaydet", use_container_width=True):
+                    if st.form_submit_button("✅ Saha Personeli Hesabını Oluştur", type="primary", use_container_width=True):
                         if alt_ad and alt_tel and alt_sifre:
-                            with conn.session as s:
-                                s.execute(text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), {"ad": alt_ad, "tel": alt_tel.strip(), "sifre": alt_sifre, "unvan": alt_unvan, "birim": personel['sorumlu_birim']})
-                                s.commit()
-                            st.success("Saha personeli eklendi!")
-                            st.rerun()
+                            temiz_alt_tel = telefon_temizle(alt_tel)
+                            try:
+                                # Aynı telefon numarası kontrolü
+                                kontrol_df = conn.query("SELECT * FROM personeller WHERE telefon_no = :tel;", params={"tel": temiz_alt_tel}, ttl=0)
+                                if not kontrol_df.empty:
+                                    st.error("❌ Bu telefon numarası sistemde zaten kayıtlı! Lütfen farklı bir numara giriniz.")
+                                else:
+                                    with conn.session as s:
+                                        s.execute(
+                                            text("INSERT INTO personeller (ad_soyad, telefon_no, sifre, unvan, sorumlu_birim) VALUES (:ad, :tel, :sifre, :unvan, :birim)"), 
+                                            {
+                                                "ad": alt_ad.strip(), 
+                                                "tel": temiz_alt_tel, 
+                                                "sifre": alt_sifre.strip(), 
+                                                "unvan": alt_unvan, 
+                                                "birim": personel['sorumlu_birim']
+                                            }
+                                        )
+                                        s.commit()
+                                    st.success(f"🎉 **{alt_ad}** ({alt_unvan}) için saha paneli oluşturuldu! Telefon: `{temiz_alt_tel}`")
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"Kayıt sırasında veritabanı hatası: {e}")
+                        else:
+                            st.warning("⚠️ Lütfen Ad Soyad, Telefon Numarası ve Şifre alanlarını eksiksiz doldurunuz.")
 
             st.markdown("---")
             try:
@@ -902,6 +959,7 @@ with tab3:
                             maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
                             st.link_button("🗺️ Konumu Haritada Gör", maps_url, use_container_width=True)
                         
+                        # SAHA PERSONELİNE WHATSAPP İŞ EMRİ GÖNDERME
                         atanan_kisi_adi = talep.get('atanan_personel')
                         if atanan_kisi_adi and atanan_kisi_adi != "Atanmadı":
                             try:
@@ -919,16 +977,37 @@ with tab3:
                                     f"📸 *Saha Görev ve Görsel Kartı:*\n{gorsel_linki}"
                                 )
                                 
-                                wa_saha_url = wa_link_olustur(hedef_tel, wa_saha_mesaj)
-                                st.link_button(f"📲 {atanan_kisi_adi}'ne WhatsApp İş Emri Gönder", wa_saha_url, type="primary", use_container_width=True)
+                                wa_saha_app = wa_link_olustur(hedef_tel, wa_saha_mesaj, web_modu=False)
+                                wa_saha_web = wa_link_olustur(hedef_tel, wa_saha_mesaj, web_modu=True)
+                                
+                                st.link_button(f"📲 {atanan_kisi_adi}'ne WhatsApp Uygulamasından Gönder", wa_saha_app, type="primary", use_container_width=True)
+                                st.link_button(f"💻 {atanan_kisi_adi}'ne WhatsApp Web (Tarayıcı) ile Gönder", wa_saha_web, use_container_width=True)
                             except Exception as e:
                                 st.write(f"Personel telefon bilgisi alınamadı: {e}")
 
+                        # VATANDAŞA GERİ DÖNÜŞ / ÇÖZÜM BİLDİRİMİ (GRİ EKRAN SORUNU ÇÖZÜLDÜ)
+                        st.markdown("---")
+                        vatandas_tel = talep.get('telefon_no', '').strip()
                         if talep.get('durum') == "Çözüldü - Kapatıldı":
-                            vatandas_tel = talep.get('telefon_no', '').strip()
-                            vat_mesaj = f"Sayin {talep['ad_soyad']}, {talep['talep_id']} numarali talebiniz kurumumuz tarafindan basariyla cozumlenmistir. Saglikli gunler dileriz."
-                            vat_wa_url = f"https://wa.me/{vatandas_tel}?text={urllib.parse.quote(vat_mesaj)}"
-                            st.link_button("✅ Vatandaşa WhatsApp Çözüm Bildirimi Gönder", vat_wa_url, type="primary", use_container_width=True)
+                            vat_mesaj = (
+                                f"🏛️ *Yenipazar Belediyesi - Ortak Çözüm Masası*\n\n"
+                                f"Sayın *{talep['ad_soyad']}*,\n"
+                                f"*{talep['talep_id']}* numaralı *{talep['alt_kategori']}* konulu talebiniz kurumumuz tarafından başarıyla çözümlenmiştir.\n\n"
+                                f"Sağlıklı günler dileriz."
+                            )
+                        else:
+                            vat_mesaj = (
+                                f"🏛️ *Yenipazar Belediyesi - Ortak Çözüm Masası*\n\n"
+                                f"Sayın *{talep['ad_soyad']}*,\n"
+                                f"*{talep['talep_id']}* numaralı talebinizle ilgili bilgilendirme: *{talep.get('durum')}*\n"
+                                f"Not: {talep.get('yönetici_notu', '')}"
+                            )
+                        
+                        vat_wa_app = wa_link_olustur(vatandas_tel, vat_mesaj, web_modu=False)
+                        vat_wa_web = wa_link_olustur(vatandas_tel, vat_mesaj, web_modu=True)
+                        
+                        st.link_button("📱 Vatandaşa WhatsApp Uygulaması ile Dönüş Yap", vat_wa_app, type="primary", use_container_width=True)
+                        st.link_button("💻 Vatandaşa WhatsApp Web (Tarayıcı) ile Dönüş Yap", vat_wa_web, use_container_width=True)
 
                     with col2:
                         st.markdown("**Vatandaş Hasar Fotoğrafı:**")
@@ -965,7 +1044,11 @@ with tab3:
                     durum_index = durumlar.index(mevcut_durum) if mevcut_durum in durumlar else 0
 
                     try:
-                        df_p_list = conn.query("SELECT ad_soyad FROM personeller WHERE sorumlu_birim = :birim;", params={"birim": personel['sorumlu_birim']}, ttl=0)
+                        df_p_list = conn.query(
+                            "SELECT ad_soyad FROM personeller WHERE sorumlu_birim = :birim AND unvan IN ('Saha Personeli', 'Usta', 'Teknisyen', 'Operatör', 'Saha Ekip Sorumlusu', 'İşçi');", 
+                            params={"birim": personel['sorumlu_birim']}, 
+                            ttl=0
+                        )
                         personeller = ["Atanmadı"] + [p["ad_soyad"] for p in df_p_list.to_dict('records')] if not df_p_list.empty else ["Atanmadı"]
                     except:
                         personeller = ["Atanmadı"]
@@ -975,7 +1058,7 @@ with tab3:
 
                     with st.form(key=f"form_{talep['talep_id']}_{idx}"):
                         yeni_durum = st.selectbox("Talep İnceleme ve Durum Güncelle", durumlar, index=durum_index, key=f"durum_sel_{talep['talep_id']}_{idx}")
-                        atanacak_kisi = st.selectbox("Saha Personeli Ata / Değiştir", personeller, index=personel_index, key=f"personel_sel_{talep['talep_id']}_{idx}")
+                        atanacak_kisi = st.selectbox("Saha Personeli / Usta Ata / Değiştir", personeller, index=personel_index, key=f"personel_sel_{talep['talep_id']}_{idx}")
                         yonetici_notu_input = st.text_area("Yönetici Notu veya Red Gerekçesi", value=talep.get('yönetici_notu', ''), key=f"not_input_{talep['talep_id']}_{idx}")
                         
                         kaydet_buton = st.form_submit_button(f"Kararı ve Atamayı Kaydet ({talep['talep_id']})", type="primary", use_container_width=True)
@@ -1119,7 +1202,7 @@ with tab3:
                             use_container_width=True
                         )
                     else:
-                        st.warning("⚠️ FPDF kütüphanesi yüklü olmadığı için PDF rapor indirme özelliği geçici olarak devre dışıdır (requirements.txt dosyası eklendiğinde aktif olacaktır).")
+                        st.warning("⚠️ FPDF kütüphanesi yüklü olmadığı için PDF rapor indirme özelliği geçici olarak devre dışıdır.")
                     
                     st.markdown("---")
                     
