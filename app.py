@@ -116,7 +116,6 @@ def cbs_harita_gorseli_uret(df_talepler, poligon):
     try:
         fig, ax = plt.subplots(figsize=(6, 4.5), dpi=150)
         
-        # Talep noktalarını Web Mercator formatına çevirip ekle
         if not df_talepler.empty and 'enlem' in df_talepler.columns and 'boylam' in df_talepler.columns:
             gecerli_df = df_talepler.dropna(subset=['enlem', 'boylam'])
             if not gecerli_df.empty:
@@ -127,12 +126,10 @@ def cbs_harita_gorseli_uret(df_talepler, poligon):
                 ).to_crs(epsg=3857)
                 gdf.plot(ax=ax, color="#dc2626", markersize=45, zorder=5, label="Arıza/Talep Noktaları", marker="o", alpha=0.85)
 
-        # İlçe sınırını ekle
         if poligon is not None:
             poly_gdf = gpd.GeoDataFrame(index=[0], geometry=[poligon], crs="EPSG:4326").to_crs(epsg=3857)
             poly_gdf.boundary.plot(ax=ax, color="#0284c7", linewidth=2.5, label="Yenipazar İlçe Sınırı", zorder=4)
 
-        # OpenStreetMap Sokak ve Yerleşim Altlığını Arka Plana Oturt
         try:
             ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik, zoom=13, alpha=0.75)
         except Exception:
@@ -754,7 +751,7 @@ with tab3:
                     for kurum in kurumlar_listesi:
                         kurum_adi = kurum["kurum_adi"]
                         birim_adi = kurum["alt_bolum"]
-                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim"] == birim_adi]
+                        ilgili_yetkililer = [p for p in tum_personeller if p.get("sorumlu_birim") == birim_adi]
                         
                         with st.expander(f"{kurum_adi} ➔ {birim_adi}"):
                             if ilgili_yetkililer:
@@ -873,7 +870,6 @@ with tab3:
             st.markdown("---")
             st.subheader(f"🏛️ {personel['sorumlu_birim']} - Operasyon Paneli")
             
-            # SAHA PERSONELİ / İŞÇİ / USTA EKLEME VE SİLME ALANI (VARSAYILAN AÇIK)
             with st.expander("👥 Birim Saha Personeli / İşçi / Usta Yönetimi (Ekle & Sil)", expanded=True):
                 st.markdown("#### 📋 Mevcut Saha Ekibiniz")
                 try:
@@ -1113,7 +1109,7 @@ with tab3:
 
             # 📊 İNSAN VE EKONOMİK KAYNAK YÖNETİMİ ANALİZ MERKEZİ
             st.markdown("---")
-            st.header("📊 İnsan dan Ekonomik Kaynak Yönetimi Analiz Merkezi")
+            st.header("📊 İnsan ve Ekonomik Kaynak Yönetimi Analiz Merkezi")
             st.info("Saha personeli iş yüklerini, ortalama çözüm sürelerini (SLA) ve gereksiz keşif turlarının önlenmesiyle sağlanan ekonomik tasarrufu hesaplar.")
             
             try:
